@@ -31,7 +31,7 @@ const App = () => (
                 </div>
                 <RoleSelector />
               </header>
-              <main className="flex-1 p-6 md:p-8 overflow-auto">
+              <main className="flex-1 p-6 md:p-8 overflow-auto bg-main-background">
                 <div className="max-w-7xl mx-auto">
                   <Routes>
                     <Route path="/" element={<Dashboard />} />
