@@ -25,9 +25,12 @@ export default function CentrosCostos() {
         {costCenters.map((center) => {
           const statusConfig = statusColors[center.status];
           return (
-            <Card key={center.id} className="p-6 border-border hover:shadow-lg transition-shadow">
+            <Card 
+              key={center.id} 
+              className="p-6 bg-card border border-border rounded-xl hover:-translate-y-1 hover:border-primary/30 hover:shadow-lg transition-all duration-300"
+            >
               <div className="flex items-start justify-between mb-4">
-                <div className="p-3 bg-primary/10 rounded-lg">
+                <div className="p-3 bg-primary/10 rounded-xl">
                   <Building2 className="h-6 w-6 text-primary" />
                 </div>
                 <Badge className={`${statusConfig.bg} ${statusConfig.text} border-0`}>
