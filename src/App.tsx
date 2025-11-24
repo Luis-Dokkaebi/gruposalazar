@@ -25,7 +25,7 @@ const App = () => (
           <div className="min-h-screen flex w-full bg-background">
             <AppSidebar />
             <div className="flex-1 flex flex-col">
-              <header className="h-16 border-b border-border bg-card flex items-center justify-between px-6 sticky top-0 z-10">
+              <header className="h-16 border-b border-border bg-card flex items-center justify-between px-6 sticky top-0 z-10 shadow-sm">
                 <div className="flex items-center gap-4">
                   <SidebarTrigger />
                 </div>
