@@ -201,10 +201,16 @@ export default function Dashboard() {
       <div>
         <h2 className="text-2xl font-bold text-foreground mb-4">Estimaciones Pendientes</h2>
         {relevantEstimations.length === 0 ? (
-          <Card className="p-12 text-center border-border">
-            <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <p className="text-muted-foreground">No hay estimaciones pendientes</p>
-          </Card>
+          <div className="p-12 text-center border-2 border-dashed border-border rounded-xl bg-transparent">
+            <FileText className="h-12 w-12 text-muted-foreground/40 mx-auto mb-4" />
+            <p className="text-muted-foreground mb-6">No hay estimaciones pendientes</p>
+            <Button 
+              onClick={() => window.location.href = '/estimaciones'}
+              className="bg-primary hover:bg-primary/90"
+            >
+              Crear nueva estimación
+            </Button>
+          </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {relevantEstimations.map((estimation) => (
