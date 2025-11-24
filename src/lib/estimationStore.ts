@@ -16,9 +16,9 @@ interface EstimationStore {
 
 // Mock data
 const mockCostCenters: CostCenter[] = [
-  { id: '1', name: 'Expansion de edificio NIDEC', status: 'proceso' },
-  { id: '2', name: 'Construcción Nave Industrial', status: 'inicio' },
-  { id: '3', name: 'Remodelación Oficinas', status: 'cierre' },
+  { id: 'CC-2024-001', name: 'Expansion de edificio NIDEC', status: 'proceso', budget: 8500000, progress: 42 },
+  { id: 'CC-2024-002', name: 'Construcción Nave Industrial', status: 'inicio', budget: 12300000, progress: 8 },
+  { id: 'CC-2024-003', name: 'Remodelación Oficinas', status: 'cierre', budget: 3200000, progress: 87 },
 ];
 
 const mockContracts: Contract[] = [
