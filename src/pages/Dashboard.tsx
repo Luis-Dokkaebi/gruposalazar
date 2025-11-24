@@ -136,6 +136,8 @@ export default function Dashboard() {
       icon: FileText,
       color: "text-primary",
       bgColor: "bg-primary/10",
+      borderColor: "border-primary",
+      hoverBg: "hover:bg-primary/5",
     },
     {
       title: "Pendientes",
@@ -143,6 +145,8 @@ export default function Dashboard() {
       icon: Clock,
       color: "text-warning",
       bgColor: "bg-warning/10",
+      borderColor: "border-warning",
+      hoverBg: "hover:bg-warning/5",
     },
     {
       title: "Aprobadas",
@@ -153,6 +157,8 @@ export default function Dashboard() {
       icon: CheckCircle,
       color: "text-success",
       bgColor: "bg-success/10",
+      borderColor: "border-success",
+      hoverBg: "hover:bg-success/5",
     },
     {
       title: "Rechazadas",
@@ -160,6 +166,8 @@ export default function Dashboard() {
       icon: AlertCircle,
       color: "text-destructive",
       bgColor: "bg-destructive/10",
+      borderColor: "border-destructive",
+      hoverBg: "hover:bg-destructive/5",
     },
   ];
 
@@ -176,13 +184,13 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat) => (
-          <Card key={stat.title} className="p-6 border-border">
+          <Card key={stat.title} className={`p-6 border-l-4 ${stat.borderColor} ${stat.hoverBg} transition-colors`}>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">{stat.title}</p>
+                <p className="text-sm text-muted-foreground font-medium">{stat.title}</p>
                 <p className="text-3xl font-bold text-foreground mt-2">{stat.value}</p>
               </div>
-              <div className={`p-3 rounded-lg ${stat.bgColor}`}>
+              <div className={`p-3 rounded-xl ${stat.bgColor}`}>
                 <stat.icon className={`h-6 w-6 ${stat.color}`} />
               </div>
             </div>
