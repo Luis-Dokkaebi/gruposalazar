@@ -25,6 +25,8 @@ export interface CostCenter {
   id: string;
   name: string;
   status: CostCenterStatus;
+  budget: number;
+  progress: number;
 }
 
 export interface Contract {
