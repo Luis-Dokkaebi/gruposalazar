@@ -26,6 +26,7 @@ export default function Estimaciones() {
     costCenterId: "",
     contractorName: "",
     estimationText: "",
+    amount: "",
     pdfFile: null as File | null,
   });
 
@@ -38,8 +39,8 @@ export default function Estimaciones() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.contractId || !formData.costCenterId || !formData.contractorName || !formData.estimationText) {
-      toast.error("Por favor completa todos los campos");
+    if (!formData.contractId || !formData.costCenterId || !formData.contractorName || !formData.estimationText || !formData.amount) {
+      toast.error("Por favor completa todos los campos requeridos");
       return;
     }
 
@@ -55,9 +56,9 @@ export default function Estimaciones() {
       contractId: formData.contractId,
       costCenterId: formData.costCenterId,
       contractorName: formData.contractorName,
-      estimationText: formData.estimationText,
       pdfUrl,
-      status: "pendiente_residente",
+      estimationText: formData.estimationText,
+      amount: parseFloat(formData.amount),
     });
 
     toast.success("Estimación creada exitosamente");
@@ -76,6 +77,7 @@ export default function Estimaciones() {
       costCenterId: "",
       contractorName: "",
       estimationText: "",
+      amount: "",
       pdfFile: null,
     });
   };
@@ -154,23 +156,36 @@ export default function Estimaciones() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="pdf" className="text-foreground">Archivo PDF</Label>
-                <div className="flex items-center gap-2">
-                  <Input
-                    id="pdf"
-                    type="file"
-                    accept=".pdf"
-                    onChange={handleFileChange}
-                    className="bg-background"
-                  />
-                  <Upload className="h-5 w-5 text-muted-foreground" />
-                </div>
-                {formData.pdfFile && (
-                  <p className="text-sm text-muted-foreground">
-                    Archivo seleccionado: {formData.pdfFile.name}
-                  </p>
-                )}
+                <Label htmlFor="amount" className="text-foreground">Monto de la Estimación</Label>
+                <Input
+                  id="amount"
+                  type="number"
+                  step="0.01"
+                  value={formData.amount}
+                  onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                  placeholder="0.00"
+                  className="bg-background"
+                />
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="pdf" className="text-foreground">Archivo PDF</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  id="pdf"
+                  type="file"
+                  accept=".pdf"
+                  onChange={handleFileChange}
+                  className="bg-background"
+                />
+                <Upload className="h-5 w-5 text-muted-foreground" />
+              </div>
+              {formData.pdfFile && (
+                <p className="text-sm text-muted-foreground">
+                  Archivo seleccionado: {formData.pdfFile.name}
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">

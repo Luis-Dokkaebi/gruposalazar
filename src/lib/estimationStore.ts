@@ -8,7 +8,7 @@ interface EstimationStore {
   contracts: Contract[];
   emailNotifications: EmailNotification[];
   setCurrentRole: (role: UserRole) => void;
-  addEstimation: (estimation: Omit<Estimation, 'id' | 'folio' | 'projectNumber' | 'createdAt'>) => void;
+  addEstimation: (estimation: Omit<Estimation, 'id' | 'folio' | 'projectNumber' | 'createdAt' | 'status' | 'residentApprovedAt' | 'superintendentApprovedAt' | 'leaderApprovedAt' | 'comprasApprovedAt' | 'finanzasApprovedAt' | 'paidAt' | 'invoiceUrl'>) => void;
   updateEstimationStatus: (id: string, status: Estimation['status'], reason?: string) => void;
   addEmailNotification: (notification: EmailNotification) => void;
   clearEmailNotifications: () => void;
@@ -60,7 +60,7 @@ export const useEstimationStore = create<EstimationStore>((set, get) => ({
       folio: String(folioCounter++),
       projectNumber: String(projectCounter),
       createdAt: new Date(),
-      status: 'pendiente_residente',
+      status: 'registered',
     };
     
     set((state) => ({
@@ -71,7 +71,7 @@ export const useEstimationStore = create<EstimationStore>((set, get) => ({
     const costCenter = get().costCenters.find(cc => cc.id === estimation.costCenterId);
     get().addEmailNotification({
       to: ['contratista', 'residente'],
-      subject: 'Nueva Estimación Recibida',
+      subject: 'Nueva Estimación Registrada',
       proyecto: costCenter?.name || 'Proyecto',
       numeroPedido: String(projectCounter),
       numeroFolio: String(folioCounter - 1),
@@ -87,10 +87,12 @@ export const useEstimationStore = create<EstimationStore>((set, get) => ({
           ? {
               ...est,
               status,
-              rejectionReason: reason,
-              residentApprovedAt: status === 'pendiente_superintendente' ? new Date() : est.residentApprovedAt,
-              superintendentApprovedAt: status === 'pendiente_lider' ? new Date() : est.superintendentApprovedAt,
-              leaderApprovedAt: status === 'pendiente_compras' ? new Date() : est.leaderApprovedAt,
+              residentApprovedAt: status === 'auth_resident' ? new Date() : est.residentApprovedAt,
+              superintendentApprovedAt: status === 'auth_super' ? new Date() : est.superintendentApprovedAt,
+              leaderApprovedAt: status === 'auth_leader' ? new Date() : est.leaderApprovedAt,
+              comprasApprovedAt: status === 'validated_compras' ? new Date() : est.comprasApprovedAt,
+              finanzasApprovedAt: status === 'validated_finanzas' ? new Date() : est.finanzasApprovedAt,
+              paidAt: status === 'paid' ? new Date() : est.paidAt,
             }
           : est
       ),
@@ -102,44 +104,64 @@ export const useEstimationStore = create<EstimationStore>((set, get) => ({
 
     const costCenter = get().costCenters.find(cc => cc.id === estimation.costCenterId);
     
-    if (status.includes('rechazado')) {
-      get().addEmailNotification({
-        to: ['contratista', 'residente'],
-        subject: 'Estimación Rechazada',
-        proyecto: costCenter?.name || 'Proyecto',
-        numeroPedido: estimation.projectNumber,
-        numeroFolio: estimation.folio,
-        texto: `Estimación rechazada. Razón: ${reason}`,
-        estimationId: id,
-      });
-    } else if (status === 'pendiente_superintendente') {
+    if (status === 'auth_resident') {
       get().addEmailNotification({
         to: ['superintendente', 'residente'],
-        subject: 'Pre estimación autorizada por Residente',
+        subject: 'Estimación autorizada por Residente',
         proyecto: costCenter?.name || 'Proyecto',
         numeroPedido: estimation.projectNumber,
         numeroFolio: estimation.folio,
         texto: estimation.estimationText,
         estimationId: id,
       });
-    } else if (status === 'pendiente_lider') {
+    } else if (status === 'auth_super') {
       get().addEmailNotification({
-        to: ['lider_proyecto', 'superintendente'],
-        subject: 'Pre estimación autorizada por Superintendente',
+        to: ['lider_proyecto', 'superintendente', 'pagos'],
+        subject: 'Estimación autorizada por Superintendente (Copia a Juany)',
         proyecto: costCenter?.name || 'Proyecto',
         numeroPedido: estimation.projectNumber,
         numeroFolio: estimation.folio,
         texto: estimation.estimationText,
         estimationId: id,
       });
-    } else if (status === 'pendiente_compras') {
+    } else if (status === 'auth_leader') {
       get().addEmailNotification({
         to: ['compras', 'lider_proyecto'],
-        subject: 'Estimación Autorizada - Control de Compras',
+        subject: 'Estimación con Visto Bueno del Líder',
         proyecto: costCenter?.name || 'Proyecto',
         numeroPedido: estimation.projectNumber,
         numeroFolio: estimation.folio,
         texto: estimation.estimationText,
+        estimationId: id,
+      });
+    } else if (status === 'validated_compras') {
+      get().addEmailNotification({
+        to: ['contratista', 'compras'],
+        subject: 'OC Generada - VÁLIDO PARA FACTURAR',
+        proyecto: costCenter?.name || 'Proyecto',
+        numeroPedido: estimation.projectNumber,
+        numeroFolio: estimation.folio,
+        texto: 'La estimación ha sido validada por Compras y se generó la Orden de Compra.',
+        estimationId: id,
+      });
+    } else if (status === 'validated_finanzas') {
+      get().addEmailNotification({
+        to: ['pagos', 'finanzas'],
+        subject: 'Factura Validada - Listo para Pago',
+        proyecto: costCenter?.name || 'Proyecto',
+        numeroPedido: estimation.projectNumber,
+        numeroFolio: estimation.folio,
+        texto: 'La factura ha sido validada por Finanzas.',
+        estimationId: id,
+      });
+    } else if (status === 'paid') {
+      get().addEmailNotification({
+        to: ['contratista', 'pagos', 'finanzas'],
+        subject: 'Pago Realizado',
+        proyecto: costCenter?.name || 'Proyecto',
+        numeroPedido: estimation.projectNumber,
+        numeroFolio: estimation.folio,
+        texto: 'El pago ha sido realizado exitosamente.',
         estimationId: id,
       });
     }

@@ -4,20 +4,17 @@ export type UserRole =
   | "superintendente"
   | "lider_proyecto"
   | "compras"
-  | "contabilidad"
-  | "almacen";
+  | "finanzas"
+  | "pagos";
 
 export type EstimationStatus = 
-  | "pendiente_residente"
-  | "rechazado_residente"
-  | "pendiente_superintendente"
-  | "rechazado_superintendente"
-  | "pendiente_lider"
-  | "rechazado_lider"
-  | "pendiente_compras"
-  | "programado_pago"
-  | "pago_realizado"
-  | "material_recibido";
+  | "registered"
+  | "auth_resident"
+  | "auth_super"
+  | "auth_leader"
+  | "validated_compras"
+  | "validated_finanzas"
+  | "paid";
 
 export type CostCenterStatus = "inicio" | "proceso" | "cierre";
 
@@ -57,8 +54,12 @@ export interface Estimation {
   residentApprovedAt?: Date;
   superintendentApprovedAt?: Date;
   leaderApprovedAt?: Date;
-  rejectionReason?: string;
+  comprasApprovedAt?: Date;
+  finanzasApprovedAt?: Date;
+  paidAt?: Date;
+  invoiceUrl?: string;
   estimationText: string;
+  amount: number;
 }
 
 export interface EmailNotification {
