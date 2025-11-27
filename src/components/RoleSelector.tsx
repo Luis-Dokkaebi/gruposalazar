@@ -15,8 +15,8 @@ const roleLabels: Record<UserRole, string> = {
   superintendente: "Superintendente",
   lider_proyecto: "Líder de Proyecto",
   compras: "Compras",
-  contabilidad: "Contabilidad",
-  almacen: "Almacén",
+  finanzas: "Finanzas",
+  pagos: "Pagos (Juany)",
 };
 
 export function RoleSelector() {

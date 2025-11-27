@@ -14,6 +14,7 @@ import {
 
 const menuItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
+  { title: "Aprobaciones", url: "/aprobaciones", icon: FileText },
   { title: "Mis Estimaciones", url: "/estimaciones", icon: FileText },
   { title: "Catálogo de Conceptos", url: "/conceptos", icon: BookOpen },
   { title: "Centros de Costos", url: "/centros-costos", icon: Building2 },

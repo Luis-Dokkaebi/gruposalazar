@@ -14,16 +14,13 @@ interface EstimationCardProps {
 }
 
 const statusLabels: Record<Estimation['status'], { label: string; variant: 'default' | 'success' | 'destructive' | 'warning' }> = {
-  pendiente_residente: { label: 'Pendiente Residente', variant: 'warning' },
-  rechazado_residente: { label: 'Rechazado Residente', variant: 'destructive' },
-  pendiente_superintendente: { label: 'Pendiente Superintendente', variant: 'warning' },
-  rechazado_superintendente: { label: 'Rechazado Superintendente', variant: 'destructive' },
-  pendiente_lider: { label: 'Pendiente Líder', variant: 'warning' },
-  rechazado_lider: { label: 'Rechazado Líder', variant: 'destructive' },
-  pendiente_compras: { label: 'En Compras', variant: 'default' },
-  programado_pago: { label: 'Pago Programado', variant: 'default' },
-  pago_realizado: { label: 'Pago Realizado', variant: 'success' },
-  material_recibido: { label: 'Material Recibido', variant: 'success' },
+  registered: { label: 'Registrada', variant: 'warning' },
+  auth_resident: { label: 'Autorizada - Residente', variant: 'default' },
+  auth_super: { label: 'Autorizada - Superintendente', variant: 'default' },
+  auth_leader: { label: 'Autorizada - Líder', variant: 'default' },
+  validated_compras: { label: 'Validada - Compras', variant: 'success' },
+  validated_finanzas: { label: 'Validada - Finanzas', variant: 'success' },
+  paid: { label: 'Pagado', variant: 'success' },
 };
 
 export function EstimationCard({ estimation, onApprove, onReject, showActions }: EstimationCardProps) {
