@@ -8,7 +8,7 @@ interface EstimationStore {
   contracts: Contract[];
   emailNotifications: EmailNotification[];
   setCurrentRole: (role: UserRole) => void;
-  addEstimation: (estimation: Omit<Estimation, 'id' | 'folio' | 'projectNumber' | 'createdAt' | 'status' | 'residentApprovedAt' | 'superintendentApprovedAt' | 'leaderApprovedAt' | 'comprasApprovedAt' | 'finanzasApprovedAt' | 'paidAt' | 'invoiceUrl'>) => void;
+  addEstimation: (estimation: Omit<Estimation, 'id' | 'folio' | 'projectNumber' | 'createdAt' | 'status' | 'residentApprovedAt' | 'superintendentApprovedAt' | 'leaderApprovedAt' | 'comprasApprovedAt' | 'finanzasApprovedAt' | 'paidAt' | 'invoiceUrl' | 'history'>) => void;
   updateEstimationStatus: (id: string, status: Estimation['status'], reason?: string) => void;
   addEmailNotification: (notification: EmailNotification) => void;
   clearEmailNotifications: () => void;
@@ -54,13 +54,22 @@ export const useEstimationStore = create<EstimationStore>((set, get) => ({
   setCurrentRole: (role) => set({ currentRole: role }),
   
   addEstimation: (estimation) => {
+    const now = new Date();
     const newEstimation: Estimation = {
       ...estimation,
       id: `EST-${Date.now()}`,
       folio: String(folioCounter++),
       projectNumber: String(projectCounter),
-      createdAt: new Date(),
+      createdAt: now,
       status: 'registered',
+      history: [
+        {
+          status: 'registered',
+          timestamp: now,
+          role: 'contratista',
+          userName: 'Contratista'
+        }
+      ]
     };
     
     set((state) => ({
@@ -81,21 +90,44 @@ export const useEstimationStore = create<EstimationStore>((set, get) => ({
   },
   
   updateEstimationStatus: (id, status, reason) => {
+    const now = new Date();
+    
+    // Role mapping for history
+    const roleMap: Record<string, { role: UserRole; userName: string }> = {
+      'registered': { role: 'contratista', userName: 'Contratista' },
+      'auth_resident': { role: 'residente', userName: 'Residente' },
+      'auth_super': { role: 'superintendente', userName: 'Superintendente' },
+      'auth_leader': { role: 'lider_proyecto', userName: 'Líder de Proyecto' },
+      'validated_compras': { role: 'compras', userName: 'Compras' },
+      'factura_subida': { role: 'contratista', userName: 'Contratista' },
+      'validated_finanzas': { role: 'finanzas', userName: 'Finanzas' },
+      'paid': { role: 'pagos', userName: 'Pagos (Juany)' }
+    };
+    
     set((state) => ({
-      estimations: state.estimations.map((est) =>
-        est.id === id
-          ? {
-              ...est,
+      estimations: state.estimations.map((est) => {
+        if (est.id !== id) return est;
+        
+        return {
+          ...est,
+          status,
+          residentApprovedAt: status === 'auth_resident' ? now : est.residentApprovedAt,
+          superintendentApprovedAt: status === 'auth_super' ? now : est.superintendentApprovedAt,
+          leaderApprovedAt: status === 'auth_leader' ? now : est.leaderApprovedAt,
+          comprasApprovedAt: status === 'validated_compras' ? now : est.comprasApprovedAt,
+          finanzasApprovedAt: status === 'validated_finanzas' ? now : est.finanzasApprovedAt,
+          paidAt: status === 'paid' ? now : est.paidAt,
+          history: [
+            ...est.history,
+            {
               status,
-              residentApprovedAt: status === 'auth_resident' ? new Date() : est.residentApprovedAt,
-              superintendentApprovedAt: status === 'auth_super' ? new Date() : est.superintendentApprovedAt,
-              leaderApprovedAt: status === 'auth_leader' ? new Date() : est.leaderApprovedAt,
-              comprasApprovedAt: status === 'validated_compras' ? new Date() : est.comprasApprovedAt,
-              finanzasApprovedAt: status === 'validated_finanzas' ? new Date() : est.finanzasApprovedAt,
-              paidAt: status === 'paid' ? new Date() : est.paidAt,
+              timestamp: now,
+              role: roleMap[status].role,
+              userName: roleMap[status].userName
             }
-          : est
-      ),
+          ]
+        };
+      }),
     }));
 
     // Send appropriate email notification

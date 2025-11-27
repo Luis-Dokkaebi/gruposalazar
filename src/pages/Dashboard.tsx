@@ -10,24 +10,30 @@ export default function Dashboard() {
   const { currentRole, estimations, emailNotifications } = useEstimationStore();
   const [selectedNotification, setSelectedNotification] = useState<typeof emailNotifications[0] | null>(null);
 
-  // Filter estimations based on current role
+  // STRICT FILTERING: Only show what's in user's "cancha" (pending work)
   const getRelevantEstimations = () => {
-    switch (currentRole) {
-      case "residente":
-        return estimations.filter(e => e.status === "registered");
-      case "superintendente":
-        return estimations.filter(e => e.status === "auth_resident");
-      case "lider_proyecto":
-        return estimations.filter(e => e.status === "auth_super");
-      case "compras":
-        return estimations.filter(e => e.status === "auth_leader");
-      case "finanzas":
-        return estimations.filter(e => e.status === "validated_compras");
-      case "pagos":
-        return estimations.filter(e => e.status === "validated_finanzas");
-      default:
-        return estimations;
+    if (currentRole === 'contratista') {
+      return estimations; // Contratista sees all their estimations
     }
+    
+    return estimations.filter(est => {
+      switch (currentRole) {
+        case 'residente':
+          return est.status === 'registered';
+        case 'superintendente':
+          return est.status === 'auth_resident';
+        case 'lider_proyecto':
+          return est.status === 'auth_super';
+        case 'compras':
+          return est.status === 'auth_leader';
+        case 'finanzas':
+          return est.status === 'factura_subida';
+        case 'pagos':
+          return est.status === 'validated_finanzas';
+        default:
+          return false;
+      }
+    });
   };
 
   const relevantEstimations = getRelevantEstimations();

@@ -82,9 +82,27 @@ export default function Estimaciones() {
     });
   };
 
-  const userEstimations = currentRole === "contratista" 
-    ? estimations.filter(e => e.contractorName === formData.contractorName)
-    : estimations;
+  // STRICT FILTERING: Only show what's in user's "cancha" (pending work)
+  const relevantEstimations = currentRole === 'contratista' 
+    ? estimations // Contratista sees all their estimations
+    : estimations.filter(est => {
+        switch (currentRole) {
+          case 'residente':
+            return est.status === 'registered';
+          case 'superintendente':
+            return est.status === 'auth_resident';
+          case 'lider_proyecto':
+            return est.status === 'auth_super';
+          case 'compras':
+            return est.status === 'auth_leader';
+          case 'finanzas':
+            return est.status === 'factura_subida';
+          case 'pagos':
+            return est.status === 'validated_finanzas';
+          default:
+            return false;
+        }
+      });
 
   return (
     <div className="space-y-8">
@@ -209,13 +227,13 @@ export default function Estimaciones() {
 
       <div>
         <h2 className="text-2xl font-bold text-foreground mb-4">Historial de Estimaciones</h2>
-        {userEstimations.length === 0 ? (
+        {relevantEstimations.length === 0 ? (
           <Card className="p-12 text-center border-border">
             <p className="text-muted-foreground">No hay estimaciones registradas</p>
           </Card>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {userEstimations.map((estimation) => (
+            {relevantEstimations.map((estimation) => (
               <EstimationCard key={estimation.id} estimation={estimation} />
             ))}
           </div>
