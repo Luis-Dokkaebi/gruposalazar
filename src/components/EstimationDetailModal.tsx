@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CheckCircle2, Upload, FileText } from "lucide-react";
 import { toast } from "sonner";
+import { ApprovalTimeline } from "./ApprovalTimeline";
 
 interface EstimationDetailModalProps {
   estimation: Estimation;
@@ -26,9 +27,21 @@ const statusSteps = [
   { key: "auth_super", label: "Superintendente", step: 3 },
   { key: "auth_leader", label: "Líder", step: 4 },
   { key: "validated_compras", label: "Compras", step: 5 },
-  { key: "validated_finanzas", label: "Finanzas", step: 6 },
-  { key: "paid", label: "Pagado", step: 7 },
+  { key: "factura_subida", label: "Factura Subida", step: 6 },
+  { key: "validated_finanzas", label: "Finanzas", step: 7 },
+  { key: "paid", label: "Pagado", step: 8 },
 ];
+
+// Email mapping for demo mode
+const emailMap: Record<string, string> = {
+  'auth_resident': 'superintendente@gruposalazar.com',
+  'auth_super': 'lider@gruposalazar.com (copia a juany@gruposalazar.com)',
+  'auth_leader': 'compras@gruposalazar.com',
+  'validated_compras': 'contratista@empresa.com',
+  'factura_subida': 'finanzas@gruposalazar.com',
+  'validated_finanzas': 'pagos@gruposalazar.com',
+  'paid': 'contratista@empresa.com'
+};
 
 export function EstimationDetailModal({ estimation, onClose }: EstimationDetailModalProps) {
   const { currentRole, updateEstimationStatus, costCenters, contracts } = useEstimationStore();
@@ -43,7 +56,7 @@ export function EstimationDetailModal({ estimation, onClose }: EstimationDetailM
   const getWatermarkConfig = () => {
     if (estimation.status === "paid") {
       return { text: "PAGADO", color: "text-emerald-500/30", bgColor: "bg-emerald-500/5" };
-    } else if (estimation.status === "validated_compras" || estimation.status === "validated_finanzas") {
+    } else if (estimation.status === "validated_compras" || estimation.status === "factura_subida" || estimation.status === "validated_finanzas") {
       return { text: "VÁLIDO PARA FACTURAR", color: "text-green-500/30", bgColor: "bg-green-500/5" };
     } else {
       return { text: "NO VÁLIDO PARA FACTURA", color: "text-red-500/30", bgColor: "bg-red-500/5" };
@@ -53,57 +66,78 @@ export function EstimationDetailModal({ estimation, onClose }: EstimationDetailM
   const watermark = getWatermarkConfig();
 
   const handleAction = () => {
+    let newStatus: Estimation['status'] | null = null;
+    
     switch (currentRole) {
       case "residente":
         if (estimation.status === "registered") {
-          updateEstimationStatus(estimation.id, "auth_resident");
-          toast.success("Estimación autorizada por Residente");
-          onClose();
+          newStatus = "auth_resident";
         }
         break;
       case "superintendente":
         if (estimation.status === "auth_resident") {
-          updateEstimationStatus(estimation.id, "auth_super");
-          toast.success("Notificación enviada a Líder y copia a Juany");
-          onClose();
+          newStatus = "auth_super";
         }
         break;
       case "lider_proyecto":
         if (estimation.status === "auth_super") {
-          updateEstimationStatus(estimation.id, "auth_leader");
-          toast.success("Visto Bueno otorgado por Líder");
-          onClose();
+          newStatus = "auth_leader";
         }
         break;
       case "compras":
         if (estimation.status === "auth_leader") {
-          updateEstimationStatus(estimation.id, "validated_compras");
-          toast.success("OC Generada - Estimación VÁLIDA PARA FACTURAR");
-          onClose();
+          newStatus = "validated_compras";
         }
         break;
       case "finanzas":
-        if (estimation.status === "validated_compras" && estimation.invoiceUrl) {
-          updateEstimationStatus(estimation.id, "validated_finanzas");
-          toast.success("Factura validada - Liberado para pago");
-          onClose();
+        if (estimation.status === "factura_subida") {
+          newStatus = "validated_finanzas";
         }
         break;
       case "pagos":
         if (estimation.status === "validated_finanzas") {
-          updateEstimationStatus(estimation.id, "paid");
-          toast.success("Transferencia confirmada - Pago realizado");
-          onClose();
+          newStatus = "paid";
         }
         break;
+    }
+    
+    if (newStatus) {
+      // DEMO MODE: Show toast notification instead of sending real email
+      const nextEmail = emailMap[newStatus];
+      
+      toast.success(
+        <div className="flex flex-col gap-1">
+          <div className="font-bold">✅ Autorización Exitosa</div>
+          <div className="text-sm">Correo de notificación enviado a:</div>
+          <div className="text-sm font-semibold text-primary">{nextEmail}</div>
+        </div>,
+        { duration: 4000 }
+      );
+      
+      // Wait 2 seconds before updating status
+      setTimeout(() => {
+        updateEstimationStatus(estimation.id, newStatus!);
+        onClose();
+      }, 2000);
     }
   };
 
   const handleInvoiceUpload = () => {
     if (invoiceFile) {
-      // Simulate upload
-      toast.success("Factura cargada exitosamente");
-      onClose();
+      // DEMO MODE: Show toast and update status
+      toast.success(
+        <div className="flex flex-col gap-1">
+          <div className="font-bold">✅ Factura Cargada Exitosamente</div>
+          <div className="text-sm">Correo de notificación enviado a:</div>
+          <div className="text-sm font-semibold text-primary">finanzas@gruposalazar.com</div>
+        </div>,
+        { duration: 4000 }
+      );
+      
+      setTimeout(() => {
+        updateEstimationStatus(estimation.id, "factura_subida");
+        onClose();
+      }, 2000);
     }
   };
 
@@ -138,7 +172,7 @@ export function EstimationDetailModal({ estimation, onClose }: EstimationDetailM
       superintendente: { label: "Autorizar Técnica", canAct: estimation.status === "auth_resident" },
       lider_proyecto: { label: "Dar Visto Bueno", canAct: estimation.status === "auth_super" },
       compras: { label: "Generar OC y Validar", canAct: estimation.status === "auth_leader" },
-      finanzas: { label: "Liberar para Pago", canAct: estimation.status === "validated_compras" && !!estimation.invoiceUrl },
+      finanzas: { label: "Liberar para Pago", canAct: estimation.status === "factura_subida" },
       pagos: { label: "Confirmar Transferencia", canAct: estimation.status === "validated_finanzas" },
       contratista: { label: "", canAct: false },
     };
@@ -222,7 +256,7 @@ export function EstimationDetailModal({ estimation, onClose }: EstimationDetailM
               
               <Progress value={progressPercentage} className="h-3" />
               
-              <div className="grid grid-cols-7 gap-2">
+              <div className="grid grid-cols-4 md:grid-cols-8 gap-2">
                 {statusSteps.map((step, index) => {
                   const isCompleted = index <= currentStepIndex;
                   const isCurrent = index === currentStepIndex;
@@ -258,6 +292,9 @@ export function EstimationDetailModal({ estimation, onClose }: EstimationDetailM
 
             {/* Action Button */}
             {getActionButton()}
+            
+            {/* Approval Timeline */}
+            <ApprovalTimeline history={estimation.history} />
           </div>
         </div>
       </DialogContent>

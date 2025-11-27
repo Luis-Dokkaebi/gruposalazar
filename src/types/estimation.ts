@@ -9,10 +9,11 @@ export type UserRole =
 
 export type EstimationStatus = 
   | "registered"
-  | "auth_resident"
+  | "auth_resident" 
   | "auth_super"
   | "auth_leader"
   | "validated_compras"
+  | "factura_subida"
   | "validated_finanzas"
   | "paid";
 
@@ -41,6 +42,13 @@ export interface ContractConcept {
   quantity: number;
 }
 
+export interface ApprovalHistoryEntry {
+  status: EstimationStatus;
+  timestamp: Date;
+  role: UserRole;
+  userName?: string;
+}
+
 export interface Estimation {
   id: string;
   folio: string;
@@ -60,6 +68,7 @@ export interface Estimation {
   invoiceUrl?: string;
   estimationText: string;
   amount: number;
+  history: ApprovalHistoryEntry[];
 }
 
 export interface EmailNotification {

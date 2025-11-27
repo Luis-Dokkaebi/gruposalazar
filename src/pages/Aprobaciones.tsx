@@ -13,6 +13,7 @@ const statusConfig: Record<string, { label: string; variant: string; badge: stri
   auth_super: { label: "Pendiente Líder", variant: "default", badge: "bg-indigo-100 text-indigo-700" },
   auth_leader: { label: "Pendiente Compras", variant: "default", badge: "bg-purple-100 text-purple-700" },
   validated_compras: { label: "Validado - Pendiente Factura", variant: "success", badge: "bg-green-100 text-green-700" },
+  factura_subida: { label: "Factura Subida - Pendiente Finanzas", variant: "default", badge: "bg-teal-100 text-teal-700" },
   validated_finanzas: { label: "Pendiente Pago", variant: "default", badge: "bg-cyan-100 text-cyan-700" },
   paid: { label: "Pagado", variant: "success", badge: "bg-emerald-100 text-emerald-700" },
 };
@@ -28,11 +29,11 @@ const getFilteredEstimations = (estimations: Estimation[], role: UserRole): Esti
     case "compras":
       return estimations.filter(e => e.status === "auth_leader");
     case "finanzas":
-      return estimations.filter(e => e.status === "validated_compras" && !e.invoiceUrl);
+      return estimations.filter(e => e.status === "factura_subida");
     case "pagos":
       return estimations.filter(e => e.status === "validated_finanzas");
     case "contratista":
-      return estimations.filter(e => e.status === "validated_compras" || e.status === "validated_finanzas" || e.status === "paid");
+      return estimations.filter(e => e.status === "validated_compras");
     default:
       return estimations;
   }

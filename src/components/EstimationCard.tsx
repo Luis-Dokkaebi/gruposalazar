@@ -19,6 +19,7 @@ const statusLabels: Record<Estimation['status'], { label: string; variant: 'defa
   auth_super: { label: 'Autorizada - Superintendente', variant: 'default' },
   auth_leader: { label: 'Autorizada - Líder', variant: 'default' },
   validated_compras: { label: 'Validada - Compras', variant: 'success' },
+  factura_subida: { label: 'Factura Subida', variant: 'default' },
   validated_finanzas: { label: 'Validada - Finanzas', variant: 'success' },
   paid: { label: 'Pagado', variant: 'success' },
 };
