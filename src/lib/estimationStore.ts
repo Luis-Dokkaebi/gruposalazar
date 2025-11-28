@@ -44,9 +44,139 @@ const mockContracts: Contract[] = [
 let folioCounter = 2979;
 let projectCounter = 137;
 
+// Mock estimations for testing the complete workflow
+const mockEstimations: Estimation[] = [
+  {
+    id: 'EST-TEST-001',
+    folio: '2975',
+    projectNumber: '137',
+    contractId: '1',
+    costCenterId: 'CC-2024-001',
+    contractorName: 'Constructora ABC',
+    pdfUrl: '#',
+    status: 'registered',
+    createdAt: new Date('2025-11-20T09:00:00'),
+    estimationText: 'Estimación de prueba - Pendiente Residente',
+    amount: 125000,
+    history: [
+      {
+        status: 'registered',
+        timestamp: new Date('2025-11-20T09:00:00'),
+        role: 'contratista',
+        userName: 'Contratista'
+      }
+    ]
+  },
+  {
+    id: 'EST-TEST-002',
+    folio: '2976',
+    projectNumber: '137',
+    contractId: '1',
+    costCenterId: 'CC-2024-001',
+    contractorName: 'Constructora XYZ',
+    pdfUrl: '#',
+    status: 'auth_resident',
+    createdAt: new Date('2025-11-21T10:00:00'),
+    residentApprovedAt: new Date('2025-11-21T14:30:00'),
+    estimationText: 'Estimación de prueba - Pendiente Superintendente',
+    amount: 85000,
+    history: [
+      {
+        status: 'registered',
+        timestamp: new Date('2025-11-21T10:00:00'),
+        role: 'contratista',
+        userName: 'Contratista'
+      },
+      {
+        status: 'auth_resident',
+        timestamp: new Date('2025-11-21T14:30:00'),
+        role: 'residente',
+        userName: 'Residente'
+      }
+    ]
+  },
+  {
+    id: 'EST-TEST-003',
+    folio: '2977',
+    projectNumber: '137',
+    contractId: '2',
+    costCenterId: 'CC-2024-002',
+    contractorName: 'Obras Industriales SA',
+    pdfUrl: '#',
+    status: 'auth_super',
+    createdAt: new Date('2025-11-22T08:00:00'),
+    residentApprovedAt: new Date('2025-11-22T11:00:00'),
+    superintendentApprovedAt: new Date('2025-11-22T15:45:00'),
+    estimationText: 'Estimación de prueba - Pendiente Líder de Proyecto',
+    amount: 195000,
+    history: [
+      {
+        status: 'registered',
+        timestamp: new Date('2025-11-22T08:00:00'),
+        role: 'contratista',
+        userName: 'Contratista'
+      },
+      {
+        status: 'auth_resident',
+        timestamp: new Date('2025-11-22T11:00:00'),
+        role: 'residente',
+        userName: 'Residente'
+      },
+      {
+        status: 'auth_super',
+        timestamp: new Date('2025-11-22T15:45:00'),
+        role: 'superintendente',
+        userName: 'Superintendente'
+      }
+    ]
+  },
+  {
+    id: 'EST-TEST-004',
+    folio: '2978',
+    projectNumber: '137',
+    contractId: '1',
+    costCenterId: 'CC-2024-001',
+    contractorName: 'Constructora DEF',
+    pdfUrl: '#',
+    status: 'auth_leader',
+    createdAt: new Date('2025-11-23T09:00:00'),
+    residentApprovedAt: new Date('2025-11-23T12:00:00'),
+    superintendentApprovedAt: new Date('2025-11-23T14:00:00'),
+    leaderApprovedAt: new Date('2025-11-23T16:30:00'),
+    estimationText: 'Estimación de prueba - Pendiente Compras (ESTE DEBE VER COMPRAS)',
+    amount: 275000,
+    history: [
+      {
+        status: 'registered',
+        timestamp: new Date('2025-11-23T09:00:00'),
+        role: 'contratista',
+        userName: 'Contratista'
+      },
+      {
+        status: 'auth_resident',
+        timestamp: new Date('2025-11-23T12:00:00'),
+        role: 'residente',
+        userName: 'Residente'
+      },
+      {
+        status: 'auth_super',
+        timestamp: new Date('2025-11-23T14:00:00'),
+        role: 'superintendente',
+        userName: 'Superintendente'
+      },
+      {
+        status: 'auth_leader',
+        timestamp: new Date('2025-11-23T16:30:00'),
+        role: 'lider_proyecto',
+        userName: 'Líder de Proyecto'
+      }
+    ]
+  }
+];
+
 export const useEstimationStore = create<EstimationStore>((set, get) => ({
   currentRole: 'contratista',
-  estimations: [],
+  estimations: mockEstimations,
   costCenters: mockCostCenters,
   contracts: mockContracts,
   emailNotifications: [],
