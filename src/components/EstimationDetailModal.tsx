@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Estimation, UserRole } from "@/types/estimation";
 import { useEstimationStore } from "@/lib/estimationStore";
+import { useProjectEstimations } from "@/hooks/useProjectEstimations";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   Dialog,
   DialogContent,
@@ -12,13 +14,18 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { CheckCircle2, Upload, FileText } from "lucide-react";
+import { CheckCircle2, Upload, FileText, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { ApprovalTimeline } from "./ApprovalTimeline";
+import type { Database } from "@/integrations/supabase/types";
+
+type AppRole = Database['public']['Enums']['app_role'];
 
 interface EstimationDetailModalProps {
   estimation: Estimation;
   onClose: () => void;
+  projectId?: string | null;
+  onRefresh?: () => void;
 }
 
 const statusSteps = [
@@ -43,9 +50,13 @@ const emailMap: Record<string, string> = {
   'paid': 'contratista@empresa.com'
 };
 
-export function EstimationDetailModal({ estimation, onClose }: EstimationDetailModalProps) {
+export function EstimationDetailModal({ estimation, onClose, projectId, onRefresh }: EstimationDetailModalProps) {
   const { currentRole, updateEstimationStatus, costCenters, contracts } = useEstimationStore();
+  const { user } = useAuth();
+  const { approveEstimation, uploadInvoice } = useProjectEstimations(projectId || null);
+  
   const [invoiceFile, setInvoiceFile] = useState<File | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const costCenter = costCenters.find(cc => cc.id === estimation.costCenterId);
   const contract = contracts.find(c => c.id === estimation.contractId);
@@ -65,7 +76,41 @@ export function EstimationDetailModal({ estimation, onClose }: EstimationDetailM
 
   const watermark = getWatermarkConfig();
 
-  const handleAction = () => {
+  const handleAction = async () => {
+    // If we have a projectId, use the dynamic database approval
+    if (projectId && estimation.id) {
+      setIsProcessing(true);
+      try {
+        const userName = user?.email || 'Usuario';
+        const nextStatus = await approveEstimation(
+          estimation.id,
+          currentRole as AppRole,
+          userName
+        );
+        
+        const nextEmail = emailMap[nextStatus] || 'siguiente@gruposalazar.com';
+        
+        toast.success(
+          <div className="flex flex-col gap-1">
+            <div className="font-bold">✅ Autorización Exitosa</div>
+            <div className="text-sm">Estado actualizado dinámicamente.</div>
+            <div className="text-sm">Correo de notificación enviado a:</div>
+            <div className="text-sm font-semibold text-primary">{nextEmail}</div>
+          </div>,
+          { duration: 4000 }
+        );
+        
+        onRefresh?.();
+        setTimeout(() => onClose(), 1500);
+      } catch (error: any) {
+        toast.error(`Error: ${error.message}`);
+      } finally {
+        setIsProcessing(false);
+      }
+      return;
+    }
+
+    // Fallback to demo mode with fixed transitions
     let newStatus: Estimation['status'] | null = null;
     
     switch (currentRole) {
@@ -102,7 +147,6 @@ export function EstimationDetailModal({ estimation, onClose }: EstimationDetailM
     }
     
     if (newStatus) {
-      // DEMO MODE: Show toast notification instead of sending real email
       const nextEmail = emailMap[newStatus];
       
       toast.success(
@@ -114,7 +158,6 @@ export function EstimationDetailModal({ estimation, onClose }: EstimationDetailM
         { duration: 4000 }
       );
       
-      // Wait 2 seconds before updating status
       setTimeout(() => {
         updateEstimationStatus(estimation.id, newStatus!);
         onClose();
@@ -122,23 +165,52 @@ export function EstimationDetailModal({ estimation, onClose }: EstimationDetailM
     }
   };
 
-  const handleInvoiceUpload = () => {
-    if (invoiceFile) {
-      // DEMO MODE: Show toast and update status
-      toast.success(
-        <div className="flex flex-col gap-1">
-          <div className="font-bold">✅ Factura Cargada Exitosamente</div>
-          <div className="text-sm">Correo de notificación enviado a:</div>
-          <div className="text-sm font-semibold text-primary">finanzas@gruposalazar.com</div>
-        </div>,
-        { duration: 4000 }
-      );
-      
-      setTimeout(() => {
-        updateEstimationStatus(estimation.id, "factura_subida");
-        onClose();
-      }, 2000);
+  const handleInvoiceUpload = async () => {
+    if (!invoiceFile) return;
+    
+    // If we have a projectId, use the database upload
+    if (projectId && estimation.id) {
+      setIsProcessing(true);
+      try {
+        const userName = user?.email || 'Contratista';
+        // In real implementation, upload file to storage first
+        const invoiceUrl = `uploads/${invoiceFile.name}`;
+        
+        await uploadInvoice(estimation.id, invoiceUrl, userName);
+        
+        toast.success(
+          <div className="flex flex-col gap-1">
+            <div className="font-bold">✅ Factura Cargada Exitosamente</div>
+            <div className="text-sm">Correo de notificación enviado a:</div>
+            <div className="text-sm font-semibold text-primary">finanzas@gruposalazar.com</div>
+          </div>,
+          { duration: 4000 }
+        );
+        
+        onRefresh?.();
+        setTimeout(() => onClose(), 1500);
+      } catch (error: any) {
+        toast.error(`Error: ${error.message}`);
+      } finally {
+        setIsProcessing(false);
+      }
+      return;
     }
+
+    // Fallback to demo mode
+    toast.success(
+      <div className="flex flex-col gap-1">
+        <div className="font-bold">✅ Factura Cargada Exitosamente</div>
+        <div className="text-sm">Correo de notificación enviado a:</div>
+        <div className="text-sm font-semibold text-primary">finanzas@gruposalazar.com</div>
+      </div>,
+      { duration: 4000 }
+    );
+    
+    setTimeout(() => {
+      updateEstimationStatus(estimation.id, "factura_subida");
+      onClose();
+    }, 2000);
   };
 
   const getActionButton = () => {
@@ -157,11 +229,15 @@ export function EstimationDetailModal({ estimation, onClose }: EstimationDetailM
           </div>
           <Button
             onClick={handleInvoiceUpload}
-            disabled={!invoiceFile}
+            disabled={!invoiceFile || isProcessing}
             className="w-full"
           >
-            <Upload className="mr-2 h-4 w-4" />
-            Subir Factura
+            {isProcessing ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Upload className="mr-2 h-4 w-4" />
+            )}
+            {isProcessing ? 'Procesando...' : 'Subir Factura'}
           </Button>
         </div>
       );
@@ -182,9 +258,13 @@ export function EstimationDetailModal({ estimation, onClose }: EstimationDetailM
     if (!action.canAct) return null;
 
     return (
-      <Button onClick={handleAction} className="w-full">
-        <CheckCircle2 className="mr-2 h-4 w-4" />
-        {action.label}
+      <Button onClick={handleAction} disabled={isProcessing} className="w-full">
+        {isProcessing ? (
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+        ) : (
+          <CheckCircle2 className="mr-2 h-4 w-4" />
+        )}
+        {isProcessing ? 'Procesando...' : action.label}
       </Button>
     );
   };

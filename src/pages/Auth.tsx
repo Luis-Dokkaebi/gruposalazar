@@ -29,8 +29,10 @@ export default function Auth() {
   // Redirect if already logged in
   useEffect(() => {
     if (user) {
-      const returnTo = searchParams.get('returnTo') || '/';
-      navigate(returnTo);
+      const returnTo = searchParams.get('returnTo');
+      // Decode the returnTo URL in case it was encoded
+      const decodedReturnTo = returnTo ? decodeURIComponent(returnTo) : '/';
+      navigate(decodedReturnTo);
     }
   }, [user, navigate, searchParams]);
 
