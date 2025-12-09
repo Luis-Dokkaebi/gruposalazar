@@ -78,7 +78,9 @@ export default function AcceptInvitation() {
   };
 
   const handleGoToAuth = () => {
-    navigate(`/auth?returnTo=/invite?token=${token}`);
+    // Encode the returnTo URL properly to handle the nested query parameter
+    const returnTo = encodeURIComponent(`/invite?token=${token}`);
+    navigate(`/auth?returnTo=${returnTo}`);
   };
 
   const handleGoToDashboard = () => {
