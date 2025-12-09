@@ -1,10 +1,13 @@
 import { useState } from "react";
 import { useEstimationStore } from "@/lib/estimationStore";
+import { useProject } from "@/contexts/ProjectContext";
+import { useProjectEstimations } from "@/hooks/useProjectEstimations";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { FileText, Eye } from "lucide-react";
+import { FileText, Eye, Loader2, AlertCircle } from "lucide-react";
 import { EstimationDetailModal } from "@/components/EstimationDetailModal";
+import { mapDbEstimationToFrontend } from "@/lib/estimationMapper";
 import { Estimation, UserRole } from "@/types/estimation";
 
 const statusConfig: Record<string, { label: string; variant: string; badge: string }> = {
@@ -40,9 +43,14 @@ const getFilteredEstimations = (estimations: Estimation[], role: UserRole): Esti
 };
 
 export default function Aprobaciones() {
-  const { estimations, currentRole, costCenters, contracts } = useEstimationStore();
+  const { currentRole, costCenters, contracts } = useEstimationStore();
+  const { currentProjectId } = useProject();
+  const { estimations: dbEstimations, loading, error, refetch } = useProjectEstimations(currentProjectId);
+  
   const [selectedEstimation, setSelectedEstimation] = useState<Estimation | null>(null);
 
+  // Map DB estimations to frontend format
+  const estimations = dbEstimations.map(est => mapDbEstimationToFrontend(est as any));
   const filteredEstimations = getFilteredEstimations(estimations, currentRole);
 
   const formatCurrency = (amount: number) => {
@@ -53,6 +61,23 @@ export default function Aprobaciones() {
     }).format(amount);
   };
 
+  if (!currentProjectId) {
+    return (
+      <div className="space-y-8">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">Bandeja de Aprobaciones</h1>
+          <p className="text-muted-foreground mt-2">
+            Gestiona las estimaciones pendientes según tu rol actual
+          </p>
+        </div>
+        <Card className="p-12 text-center">
+          <AlertCircle className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
+          <p className="text-muted-foreground">Selecciona un proyecto para ver las aprobaciones pendientes</p>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8">
       <div>
@@ -62,7 +87,17 @@ export default function Aprobaciones() {
         </p>
       </div>
 
-      {filteredEstimations.length === 0 ? (
+      {loading ? (
+        <Card className="p-12 text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+          <p className="text-muted-foreground mt-4">Cargando estimaciones...</p>
+        </Card>
+      ) : error ? (
+        <Card className="p-12 text-center">
+          <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
+          <p className="text-destructive">{error}</p>
+        </Card>
+      ) : filteredEstimations.length === 0 ? (
         <Card className="p-12 text-center">
           <FileText className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
           <h3 className="text-lg font-semibold text-foreground mb-2">No hay estimaciones pendientes</h3>
@@ -139,7 +174,9 @@ export default function Aprobaciones() {
       {selectedEstimation && (
         <EstimationDetailModal
           estimation={selectedEstimation}
+          projectId={currentProjectId}
           onClose={() => setSelectedEstimation(null)}
+          onRefresh={refetch}
         />
       )}
     </div>
