@@ -105,7 +105,7 @@ export default function Estimaciones() {
         cost_center_id: formData.costCenterId || undefined,
       });
 
-      toast.success("Estimación creada exitosamente");
+      toast.success("Estimación enviada exitosamente para su revisión");
       
       // Reset form
       setFormData({
