@@ -174,27 +174,134 @@ const mockEstimations: Estimation[] = [
   }
 ];
 
+// Project configuration interface
+export interface ProjectConfig {
+  requiresResident: boolean;
+  requiresSuperintendent: boolean;
+  requiresLeader: boolean;
+}
+
+interface EstimationStore {
+  currentRole: UserRole;
+  estimations: Estimation[];
+  costCenters: CostCenter[];
+  contracts: Contract[];
+  emailNotifications: EmailNotification[];
+  projectConfig: ProjectConfig;
+  setCurrentRole: (role: UserRole) => void;
+  setProjectConfig: (config: Partial<ProjectConfig>) => void;
+  addEstimation: (estimation: Omit<Estimation, 'id' | 'folio' | 'projectNumber' | 'createdAt' | 'status' | 'residentApprovedAt' | 'superintendentApprovedAt' | 'leaderApprovedAt' | 'comprasApprovedAt' | 'finanzasApprovedAt' | 'paidAt' | 'invoiceUrl' | 'history'>) => void;
+  updateEstimationStatus: (id: string, status: Estimation['status'], reason?: string) => void;
+  addEmailNotification: (notification: EmailNotification) => void;
+  clearEmailNotifications: () => void;
+}
+
+// Helper to determine the *initial* status based on config
+// Used when creating a new estimation.
+export const getInitialStatus = (config: ProjectConfig): Estimation['status'] => {
+  // Normally starts at 'registered' (Pending Resident).
+  // If Resident is skipped, it should start at 'auth_resident' (Pending Super).
+  // If Super is skipped, it should start at 'auth_super' (Pending Leader).
+  // etc.
+
+  if (config.requiresResident) return 'registered';
+  if (config.requiresSuperintendent) return 'auth_resident';
+  if (config.requiresLeader) return 'auth_super';
+  return 'auth_leader'; // Ready for Compras (wait, Compras expects 'auth_leader' status?)
+  // Yes:
+  // 'auth_leader': Approved by Leader -> Pendiente Compras.
+  // So if everyone is skipped, we land in 'auth_leader' which means "Ready for Compras".
+};
+
+// Helper to determine next status based on config
+// This function takes the CURRENT status and returns the NEXT status
+// skipping any disabled steps.
+const getNextStatus = (currentStatus: Estimation['status'], config: ProjectConfig): Estimation['status'] => {
+
+  // Helper to check if a "target status" is valid (i.e. the role required for it is enabled)
+  // or if we should skip past it.
+
+  // Logic:
+  // If we are moving FROM 'registered' (Resident Approved):
+  //   Normal destination: 'auth_resident' (Pending Super).
+  //   Check if Super is required.
+  //   If Super required -> return 'auth_resident'.
+  //   If Super skipped -> we treat 'auth_resident' as auto-approved -> move to 'auth_super'.
+
+  switch (currentStatus) {
+    case 'registered':
+      // Current: Registered (Pending Resident).
+      // Event: Resident Approves.
+      // Next Logical: 'auth_resident' (Pending Super).
+      if (config.requiresSuperintendent) return 'auth_resident';
+      // Super skipped. Next: 'auth_super' (Pending Leader).
+      if (config.requiresLeader) return 'auth_super';
+      // Leader skipped. Next: 'auth_leader' (Pending Compras).
+      return 'auth_leader';
+
+    case 'auth_resident':
+      // Current: Auth Resident (Pending Super).
+      // Event: Super Approves.
+      // Next Logical: 'auth_super' (Pending Leader).
+      if (config.requiresLeader) return 'auth_super';
+      // Leader skipped. Next: 'auth_leader' (Pending Compras).
+      return 'auth_leader';
+
+    case 'auth_super':
+      // Current: Auth Super (Pending Leader).
+      // Event: Leader Approves.
+      // Next Logical: 'auth_leader' (Pending Compras).
+      return 'auth_leader';
+
+    case 'auth_leader':
+      // Current: Auth Leader (Pending Compras).
+      // Event: Compras Validates.
+      return 'validated_compras';
+
+    case 'validated_compras':
+      return 'factura_subida';
+
+    case 'factura_subida':
+      return 'validated_finanzas';
+
+    case 'validated_finanzas':
+      return 'paid';
+
+    default:
+      return currentStatus;
+  }
+};
+
 export const useEstimationStore = create<EstimationStore>((set, get) => ({
   currentRole: 'contratista',
   estimations: mockEstimations,
   costCenters: mockCostCenters,
+  projectConfig: {
+    requiresResident: true,
+    requiresSuperintendent: true,
+    requiresLeader: true,
+  },
   contracts: mockContracts,
   emailNotifications: [],
   
   setCurrentRole: (role) => set({ currentRole: role }),
+  setProjectConfig: (config) => set((state) => ({
+    projectConfig: { ...state.projectConfig, ...config }
+  })),
   
   addEstimation: (estimation) => {
     const now = new Date();
+    const initialStatus = getInitialStatus(get().projectConfig);
     const newEstimation: Estimation = {
       ...estimation,
       id: `EST-${Date.now()}`,
       folio: String(folioCounter++),
       projectNumber: String(projectCounter),
       createdAt: now,
-      status: 'registered',
+      status: initialStatus,
       history: [
         {
-          status: 'registered',
+          status: initialStatus,
           timestamp: now,
           role: 'contratista',
           userName: 'Contratista'
@@ -221,7 +328,6 @@ export const useEstimationStore = create<EstimationStore>((set, get) => ({
   
   updateEstimationStatus: (id, status, reason) => {
     const now = new Date();
-    
     // Role mapping for history
     const roleMap: Record<string, { role: UserRole; userName: string }> = {
       'registered': { role: 'contratista', userName: 'Contratista' },
@@ -238,9 +344,41 @@ export const useEstimationStore = create<EstimationStore>((set, get) => ({
       estimations: state.estimations.map((est) => {
         if (est.id !== id) return est;
         
+        // Calculate dynamic next status if we are just approving (moving forward)
+        let nextStatus = status;
+        // Basic check: if we are moving from a known state to the "next" state,
+        // we should respect the config.
+        // Note: The UI usually calls this with a hardcoded next status.
+        // Ideally the UI should ask "what is next?" but here we intercept.
+
+        // However, the `status` argument passed here IS the target status.
+        // If the UI says "move to auth_resident" but resident is disabled,
+        // we should instead move to the *actual* next status.
+
+        // Let's rely on the previous status to determine the next one dynamically
+        if (est.status !== status) {
+           // We are changing status. Let's see what the "next" one *should* be
+           // based on current logic vs config.
+           // Note: This logic assumes sequential forward movement.
+           const calculatedNext = getNextStatus(est.status, state.projectConfig);
+
+           // If the requested status (from UI button) matches the 'natural' next step
+           // of the default flow (e.g. registered -> auth_resident),
+           // BUT the config says skip it, we should use the calculated next.
+
+           // Actually, it's safer to just *use* the calculated next status
+           // if we are in an approval flow.
+
+           // If status is 'paid' or 'factura_subida' etc, we might not need this.
+           // But for the approval chain:
+           if (['auth_resident', 'auth_super', 'auth_leader', 'validated_compras'].includes(status)) {
+             nextStatus = calculatedNext;
+           }
+        }
+
         return {
           ...est,
-          status,
+          status: nextStatus,
           residentApprovedAt: status === 'auth_resident' ? now : est.residentApprovedAt,
           superintendentApprovedAt: status === 'auth_super' ? now : est.superintendentApprovedAt,
           leaderApprovedAt: status === 'auth_leader' ? now : est.leaderApprovedAt,
@@ -250,10 +388,10 @@ export const useEstimationStore = create<EstimationStore>((set, get) => ({
           history: [
             ...est.history,
             {
-              status,
+              status: nextStatus,
               timestamp: now,
-              role: roleMap[status].role,
-              userName: roleMap[status].userName
+              role: roleMap[nextStatus]?.role || 'soporte',
+              userName: roleMap[nextStatus]?.userName || 'Soporte'
             }
           ]
         };
@@ -261,68 +399,70 @@ export const useEstimationStore = create<EstimationStore>((set, get) => ({
     }));
 
     // Send appropriate email notification
-    const estimation = get().estimations.find(e => e.id === id);
-    if (!estimation) return;
+    // We need to re-fetch status because it might have changed due to dynamic logic above
+    const updatedEstimation = get().estimations.find(e => e.id === id);
+    if (!updatedEstimation) return;
+    const finalStatus = updatedEstimation.status;
 
-    const costCenter = get().costCenters.find(cc => cc.id === estimation.costCenterId);
+    const costCenter = get().costCenters.find(cc => cc.id === updatedEstimation.costCenterId);
     
-    if (status === 'auth_resident') {
+    if (finalStatus === 'auth_resident') {
       get().addEmailNotification({
         to: ['superintendente', 'residente'],
         subject: 'Estimación autorizada por Residente',
         proyecto: costCenter?.name || 'Proyecto',
-        numeroPedido: estimation.projectNumber,
-        numeroFolio: estimation.folio,
-        texto: estimation.estimationText,
+        numeroPedido: updatedEstimation.projectNumber,
+        numeroFolio: updatedEstimation.folio,
+        texto: updatedEstimation.estimationText,
         estimationId: id,
       });
-    } else if (status === 'auth_super') {
+    } else if (finalStatus === 'auth_super') {
       get().addEmailNotification({
         to: ['lider_proyecto', 'superintendente', 'pagos'],
         subject: 'Estimación autorizada por Superintendente (Copia a Juany)',
         proyecto: costCenter?.name || 'Proyecto',
-        numeroPedido: estimation.projectNumber,
-        numeroFolio: estimation.folio,
-        texto: estimation.estimationText,
+        numeroPedido: updatedEstimation.projectNumber,
+        numeroFolio: updatedEstimation.folio,
+        texto: updatedEstimation.estimationText,
         estimationId: id,
       });
-    } else if (status === 'auth_leader') {
+    } else if (finalStatus === 'auth_leader') {
       get().addEmailNotification({
         to: ['compras', 'lider_proyecto'],
         subject: 'Estimación con Visto Bueno del Líder',
         proyecto: costCenter?.name || 'Proyecto',
-        numeroPedido: estimation.projectNumber,
-        numeroFolio: estimation.folio,
-        texto: estimation.estimationText,
+        numeroPedido: updatedEstimation.projectNumber,
+        numeroFolio: updatedEstimation.folio,
+        texto: updatedEstimation.estimationText,
         estimationId: id,
       });
-    } else if (status === 'validated_compras') {
+    } else if (finalStatus === 'validated_compras') {
       get().addEmailNotification({
         to: ['contratista', 'compras'],
         subject: 'OC Generada - VÁLIDO PARA FACTURAR',
         proyecto: costCenter?.name || 'Proyecto',
-        numeroPedido: estimation.projectNumber,
-        numeroFolio: estimation.folio,
+        numeroPedido: updatedEstimation.projectNumber,
+        numeroFolio: updatedEstimation.folio,
         texto: 'La estimación ha sido validada por Compras y se generó la Orden de Compra.',
         estimationId: id,
       });
-    } else if (status === 'validated_finanzas') {
+    } else if (finalStatus === 'validated_finanzas') {
       get().addEmailNotification({
         to: ['pagos', 'finanzas'],
         subject: 'Factura Validada - Listo para Pago',
         proyecto: costCenter?.name || 'Proyecto',
-        numeroPedido: estimation.projectNumber,
-        numeroFolio: estimation.folio,
+        numeroPedido: updatedEstimation.projectNumber,
+        numeroFolio: updatedEstimation.folio,
         texto: 'La factura ha sido validada por Finanzas.',
         estimationId: id,
       });
-    } else if (status === 'paid') {
+    } else if (finalStatus === 'paid') {
       get().addEmailNotification({
         to: ['contratista', 'pagos', 'finanzas'],
         subject: 'Pago Realizado',
         proyecto: costCenter?.name || 'Proyecto',
-        numeroPedido: estimation.projectNumber,
-        numeroFolio: estimation.folio,
+        numeroPedido: updatedEstimation.projectNumber,
+        numeroFolio: updatedEstimation.folio,
         texto: 'El pago ha sido realizado exitosamente.',
         estimationId: id,
       });
