@@ -10,11 +10,13 @@ interface EstimationCardProps {
   estimation: Estimation;
   onApprove?: () => void;
   onReject?: () => void;
+  onClick?: () => void;
   showActions?: boolean;
 }
 
 const statusLabels: Record<Estimation['status'], { label: string; variant: 'default' | 'success' | 'destructive' | 'warning' }> = {
-  registered: { label: 'Registrada', variant: 'warning' },
+  submitted: { label: 'Pendiente Revisión Soporte', variant: 'warning' },
+  registered: { label: 'Registrada', variant: 'default' },
   auth_resident: { label: 'Autorizada - Residente', variant: 'default' },
   auth_super: { label: 'Autorizada - Superintendente', variant: 'default' },
   auth_leader: { label: 'Autorizada - Líder', variant: 'default' },
@@ -24,11 +26,14 @@ const statusLabels: Record<Estimation['status'], { label: string; variant: 'defa
   paid: { label: 'Pagado', variant: 'success' },
 };
 
-export function EstimationCard({ estimation, onApprove, onReject, showActions }: EstimationCardProps) {
+export function EstimationCard({ estimation, onApprove, onReject, onClick, showActions }: EstimationCardProps) {
   const statusInfo = statusLabels[estimation.status];
 
   return (
-    <Card className="p-6 hover:shadow-lg transition-shadow border-border">
+    <Card
+      className={`p-6 hover:shadow-lg transition-shadow border-border ${onClick ? 'cursor-pointer hover:border-primary/50' : ''}`}
+      onClick={onClick}
+    >
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-primary/10 rounded-lg">

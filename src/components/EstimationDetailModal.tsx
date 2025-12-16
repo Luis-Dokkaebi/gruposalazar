@@ -14,9 +14,10 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { CheckCircle2, Upload, FileText, Loader2 } from "lucide-react";
+import { CheckCircle2, Upload, FileText, Loader2, Settings2 } from "lucide-react";
 import { toast } from "sonner";
 import { ApprovalTimeline } from "./ApprovalTimeline";
+import { SupportReviewModal } from "./SupportReviewModal";
 import type { Database } from "@/integrations/supabase/types";
 
 type AppRole = Database['public']['Enums']['app_role'];
@@ -57,6 +58,7 @@ export function EstimationDetailModal({ estimation, onClose, projectId, onRefres
   
   const [invoiceFile, setInvoiceFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [showSupportModal, setShowSupportModal] = useState(false);
 
   const costCenter = costCenters.find(cc => cc.id === estimation.costCenterId);
   const contract = contracts.find(c => c.id === estimation.contractId);
@@ -214,6 +216,21 @@ export function EstimationDetailModal({ estimation, onClose, projectId, onRefres
   };
 
   const getActionButton = () => {
+    // Support Action: Manual Review
+    if (currentRole === "soporte") {
+      return (
+        <div className="space-y-4">
+          <Button
+            onClick={() => setShowSupportModal(true)}
+            className="w-full bg-indigo-600 hover:bg-indigo-700"
+          >
+            <Settings2 className="mr-2 h-4 w-4" />
+            Revisar y Autorizar (Soporte)
+          </Button>
+        </div>
+      );
+    }
+
     if (currentRole === "contratista" && estimation.status === "validated_compras") {
       return (
         <div className="space-y-4">
@@ -378,6 +395,17 @@ export function EstimationDetailModal({ estimation, onClose, projectId, onRefres
           </div>
         </div>
       </DialogContent>
+
+      {showSupportModal && (
+        <SupportReviewModal
+          estimation={estimation}
+          onClose={() => setShowSupportModal(false)}
+          onComplete={() => {
+            onRefresh?.();
+            onClose();
+          }}
+        />
+      )}
     </Dialog>
   );
 }
