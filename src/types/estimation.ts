@@ -9,6 +9,7 @@ export type UserRole =
   | "soporte";
 
 export type EstimationStatus = 
+  | "submitted"
   | "registered"
   | "auth_resident" 
   | "auth_super"

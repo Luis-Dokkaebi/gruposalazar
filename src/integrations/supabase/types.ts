@@ -439,6 +439,7 @@ export type Database = {
         | "finanzas"
         | "pagos"
       estimation_status:
+        | "submitted"
         | "registered"
         | "auth_resident"
         | "auth_super"

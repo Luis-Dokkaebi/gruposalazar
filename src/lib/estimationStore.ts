@@ -199,18 +199,8 @@ interface EstimationStore {
 // Helper to determine the *initial* status based on config
 // Used when creating a new estimation.
 export const getInitialStatus = (config: ProjectConfig): Estimation['status'] => {
-  // Normally starts at 'registered' (Pending Resident).
-  // If Resident is skipped, it should start at 'auth_resident' (Pending Super).
-  // If Super is skipped, it should start at 'auth_super' (Pending Leader).
-  // etc.
-
-  if (config.requiresResident) return 'registered';
-  if (config.requiresSuperintendent) return 'auth_resident';
-  if (config.requiresLeader) return 'auth_super';
-  return 'auth_leader'; // Ready for Compras (wait, Compras expects 'auth_leader' status?)
-  // Yes:
-  // 'auth_leader': Approved by Leader -> Pendiente Compras.
-  // So if everyone is skipped, we land in 'auth_leader' which means "Ready for Compras".
+  // New Flow: Always starts at 'submitted' for Support Review
+  return 'submitted';
 };
 
 // Helper to determine next status based on config
@@ -229,6 +219,16 @@ const getNextStatus = (currentStatus: Estimation['status'], config: ProjectConfi
   //   If Super skipped -> we treat 'auth_resident' as auto-approved -> move to 'auth_super'.
 
   switch (currentStatus) {
+    case 'submitted':
+      // Current: Submitted (Pending Support).
+      // Event: Support Approves/Routes.
+      // Next: Depends on manual config, but default logic is to start chain.
+      // Normally goes to 'registered' (Pending Resident).
+      if (config.requiresResident) return 'registered';
+      if (config.requiresSuperintendent) return 'auth_resident';
+      if (config.requiresLeader) return 'auth_super';
+      return 'auth_leader';
+
     case 'registered':
       // Current: Registered (Pending Resident).
       // Event: Resident Approves.
@@ -316,9 +316,12 @@ export const useEstimationStore = create<EstimationStore>((set, get) => ({
     // Send email notification dynamically based on initial status
     const costCenter = get().costCenters.find(cc => cc.id === estimation.costCenterId);
     let to: UserRole[] = ['contratista'];
-    let subject = 'Nueva Estimación Registrada';
+    let subject = 'Nueva Estimación Recibida';
 
-    if (initialStatus === 'registered') {
+    if (initialStatus === 'submitted') {
+      to.push('soporte');
+      subject = 'Nueva Estimación (Pendiente Revisión Soporte)';
+    } else if (initialStatus === 'registered') {
       to.push('residente');
     } else if (initialStatus === 'auth_resident') {
       to.push('superintendente');
@@ -346,7 +349,8 @@ export const useEstimationStore = create<EstimationStore>((set, get) => ({
     const now = new Date();
     // Role mapping for history
     const roleMap: Record<string, { role: UserRole; userName: string }> = {
-      'registered': { role: 'contratista', userName: 'Contratista' },
+      'submitted': { role: 'contratista', userName: 'Contratista' },
+      'registered': { role: 'soporte', userName: 'Soporte' },
       'auth_resident': { role: 'residente', userName: 'Residente' },
       'auth_super': { role: 'superintendente', userName: 'Superintendente' },
       'auth_leader': { role: 'lider_proyecto', userName: 'Líder de Proyecto' },
