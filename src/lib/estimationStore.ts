@@ -313,11 +313,27 @@ export const useEstimationStore = create<EstimationStore>((set, get) => ({
       estimations: [newEstimation, ...state.estimations],
     }));
 
-    // Send email notification
+    // Send email notification dynamically based on initial status
     const costCenter = get().costCenters.find(cc => cc.id === estimation.costCenterId);
+    let to: UserRole[] = ['contratista'];
+    let subject = 'Nueva Estimación Registrada';
+
+    if (initialStatus === 'registered') {
+      to.push('residente');
+    } else if (initialStatus === 'auth_resident') {
+      to.push('superintendente');
+      subject = 'Nueva Estimación (Pendiente Superintendente)';
+    } else if (initialStatus === 'auth_super') {
+      to.push('lider_proyecto');
+      subject = 'Nueva Estimación (Pendiente Líder)';
+    } else if (initialStatus === 'auth_leader') {
+      to.push('compras');
+      subject = 'Nueva Estimación (Pendiente Compras)';
+    }
+
     get().addEmailNotification({
-      to: ['contratista', 'residente'],
-      subject: 'Nueva Estimación Registrada',
+      to,
+      subject,
       proyecto: costCenter?.name || 'Proyecto',
       numeroPedido: String(projectCounter),
       numeroFolio: String(folioCounter - 1),
@@ -405,11 +421,17 @@ export const useEstimationStore = create<EstimationStore>((set, get) => ({
     const finalStatus = updatedEstimation.status;
 
     const costCenter = get().costCenters.find(cc => cc.id === updatedEstimation.costCenterId);
+
+    // Note: If a role was skipped, the notification should reflect that we advanced TO the next role.
+    // We already calculated the correct *target* status in `finalStatus`.
+    // The subject lines here assume "Approved by X". We should perhaps generalize them or
+    // leave them as is, implying "Passed X stage".
+    // For simplicity and user expectation, if we land in 'auth_resident', we notify Super.
     
     if (finalStatus === 'auth_resident') {
       get().addEmailNotification({
         to: ['superintendente', 'residente'],
-        subject: 'Estimación autorizada por Residente',
+        subject: 'Estimación disponible para Superintendente', // Changed from "autorizada por Residente" to be more generic if skipped
         proyecto: costCenter?.name || 'Proyecto',
         numeroPedido: updatedEstimation.projectNumber,
         numeroFolio: updatedEstimation.folio,
@@ -419,7 +441,7 @@ export const useEstimationStore = create<EstimationStore>((set, get) => ({
     } else if (finalStatus === 'auth_super') {
       get().addEmailNotification({
         to: ['lider_proyecto', 'superintendente', 'pagos'],
-        subject: 'Estimación autorizada por Superintendente (Copia a Juany)',
+        subject: 'Estimación disponible para Líder de Proyecto',
         proyecto: costCenter?.name || 'Proyecto',
         numeroPedido: updatedEstimation.projectNumber,
         numeroFolio: updatedEstimation.folio,
@@ -429,7 +451,7 @@ export const useEstimationStore = create<EstimationStore>((set, get) => ({
     } else if (finalStatus === 'auth_leader') {
       get().addEmailNotification({
         to: ['compras', 'lider_proyecto'],
-        subject: 'Estimación con Visto Bueno del Líder',
+        subject: 'Estimación disponible para Compras',
         proyecto: costCenter?.name || 'Proyecto',
         numeroPedido: updatedEstimation.projectNumber,
         numeroFolio: updatedEstimation.folio,
