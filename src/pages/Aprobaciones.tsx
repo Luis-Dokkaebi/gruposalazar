@@ -22,39 +22,24 @@ const statusConfig: Record<string, { label: string; variant: string; badge: stri
 };
 
 const getFilteredEstimations = (estimations: Estimation[], role: UserRole): Estimation[] => {
-  // Define the sequence order of statuses
-  const statusOrder: Record<string, number> = {
-    'registered': 0,
-    'auth_resident': 1,
-    'auth_super': 2,
-    'auth_leader': 3,
-    'validated_compras': 4,
-    'factura_subida': 5,
-    'validated_finanzas': 6,
-    'paid': 7
-  };
-
-  // Define the "active" status for each role
-  let roleActiveStatus = '';
   switch (role) {
-    case 'residente': roleActiveStatus = 'registered'; break;
-    case 'superintendente': roleActiveStatus = 'auth_resident'; break;
-    case 'lider_proyecto': roleActiveStatus = 'auth_super'; break;
-    case 'compras': roleActiveStatus = 'auth_leader'; break;
-    case 'finanzas': roleActiveStatus = 'factura_subida'; break;
-    case 'pagos': roleActiveStatus = 'validated_finanzas'; break;
-    case 'contratista': roleActiveStatus = 'validated_compras'; break;
-    default: return estimations; // Soporte sees all
+    case "residente":
+      return estimations.filter(e => e.status === "registered");
+    case "superintendente":
+      return estimations.filter(e => e.status === "auth_resident");
+    case "lider_proyecto":
+      return estimations.filter(e => e.status === "auth_super");
+    case "compras":
+      return estimations.filter(e => e.status === "auth_leader");
+    case "finanzas":
+      return estimations.filter(e => e.status === "factura_subida");
+    case "pagos":
+      return estimations.filter(e => e.status === "validated_finanzas");
+    case "contratista":
+      return estimations.filter(e => e.status === "validated_compras");
+    default:
+      return estimations;
   }
-
-  // Filter: Show if current status is >= role's active status
-  return estimations.filter(est => {
-     const currentStatusIndex = statusOrder[est.status] || 0;
-     const roleActiveIndex = statusOrder[roleActiveStatus];
-
-     if (roleActiveIndex === undefined) return true;
-     return currentStatusIndex >= roleActiveIndex;
-  });
 };
 
 export default function Aprobaciones() {
