@@ -1,6 +1,7 @@
 import { useEstimationStore } from "@/lib/estimationStore";
 import { EstimationCard } from "@/components/EstimationCard";
 import { ProjectConfig } from "@/components/ProjectConfig";
+import { ProjectTeam } from "@/components/ProjectTeam";
 import { EstimationDetailModal } from "@/components/EstimationDetailModal";
 import { Card } from "@/components/ui/card";
 import { FileText, Clock, CheckCircle, AlertCircle } from "lucide-react";
@@ -127,7 +128,12 @@ export default function Dashboard() {
         </p>
       </div>
 
-      {currentRole === 'soporte' && <ProjectConfig />}
+      {currentRole === 'soporte' && (
+        <div className="grid gap-6 md:grid-cols-2">
+          <ProjectConfig />
+          <ProjectTeam />
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat) => (
