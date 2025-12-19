@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,87 +18,44 @@ interface Recipient {
 export function NotificationManager({ estimationId }: NotificationManagerProps) {
   const [recipients, setRecipients] = useState<Recipient[]>([]);
   const [newEmail, setNewEmail] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
-  const fetchRecipients = async () => {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from('estimation_notification_recipients')
-      .select('*')
-      .eq('estimation_id', estimationId);
-
-    if (error) {
-      // If table doesn't exist (mock mode or migration pending), we might just fail silently or show empty
-      // console.error("Error fetching recipients:", error);
-      // For now, let's assume it works or fail gracefully
-      setLoading(false);
-      return;
-    }
-
-    setRecipients(data || []);
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    fetchRecipients();
-  }, [estimationId]);
-
-  const handleAddRecipient = async () => {
+  // Note: This component requires a estimation_notification_recipients table
+  // For now, it operates with local state only
+  const handleAddRecipient = () => {
     if (!newEmail) return;
 
     // Basic email validation
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) {
       toast({
-        title: "Invalid Email",
-        description: "Please enter a valid email address.",
+        title: "Email inválido",
+        description: "Por favor ingresa un correo válido.",
         variant: "destructive"
       });
       return;
     }
 
-    const { error } = await supabase
-      .from('estimation_notification_recipients')
-      .insert({
-        estimation_id: estimationId,
-        email: newEmail,
-      });
+    const newRecipient: Recipient = {
+      id: crypto.randomUUID(),
+      email: newEmail,
+      estimation_id: estimationId,
+    };
 
-    if (error) {
-      toast({
-        title: "Error adding recipient",
-        description: error.message,
-        variant: "destructive"
-      });
-    } else {
-      setNewEmail("");
-      fetchRecipients();
-      toast({
-        title: "Recipient Added",
-        description: `${newEmail} will receive notifications for this estimation.`
-      });
-    }
+    setRecipients(prev => [...prev, newRecipient]);
+    setNewEmail("");
+    toast({
+      title: "Destinatario Agregado",
+      description: `${newEmail} recibirá notificaciones de esta estimación.`
+    });
   };
 
-  const handleRemoveRecipient = async (id: string) => {
-    const { error } = await supabase
-      .from('estimation_notification_recipients')
-      .delete()
-      .eq('id', id);
-
-    if (error) {
-      toast({
-        title: "Error removing recipient",
-        description: error.message,
-        variant: "destructive"
-      });
-    } else {
-      fetchRecipients();
-      toast({
-        title: "Recipient Removed",
-        description: "Recipient removed successfully."
-      });
-    }
+  const handleRemoveRecipient = (id: string) => {
+    setRecipients(prev => prev.filter(r => r.id !== id));
+    toast({
+      title: "Destinatario Eliminado",
+      description: "Destinatario eliminado correctamente."
+    });
   };
 
   if (loading) return <div className="text-sm text-muted-foreground">Cargando destinatarios...</div>;

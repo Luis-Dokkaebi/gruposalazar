@@ -22,7 +22,7 @@ import type { ProjectStats } from "@/hooks/useSupportDashboardData";
 import { formatCurrency } from "@/lib/utils";
 import { Eye, Filter, Loader2 } from "lucide-react";
 import { ProjectDetailModal } from "./ProjectDetailModal";
-import { DatePickerWithRange } from "@/components/ui/date-range-picker"; // Assuming this component exists or similar
+// Date range picker is handled via Popover + Calendar below
 import { DateRange } from "react-day-picker";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";

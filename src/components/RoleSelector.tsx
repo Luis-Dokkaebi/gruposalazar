@@ -27,6 +27,7 @@ const roleLabels: Record<UserRole, string> = {
   compras: "Compras",
   finanzas: "Finanzas",
   pagos: "Pagos (Juany)",
+  soporte_tecnico: "Soporte Técnico",
 };
 
 export function RoleSelector() {
