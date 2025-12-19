@@ -17,6 +17,8 @@ import Conceptos from "./pages/Conceptos";
 import CentrosCostos from "./pages/CentrosCostos";
 import Auth from "./pages/Auth";
 import AcceptInvitation from "./pages/AcceptInvitation";
+import SupportDashboard from "./pages/SupportDashboard";
+import { SupportRoute } from "./components/SupportRoute";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 
@@ -126,6 +128,12 @@ const AppRoutes = () => (
         </ProtectedRoute>
       }
     />
+
+    {/* Support Route */}
+    <Route element={<SupportRoute />}>
+      <Route path="/support-dashboard" element={<MainLayout><SupportDashboard /></MainLayout>} />
+    </Route>
+
     <Route path="*" element={<NotFound />} />
   </Routes>
 );
