@@ -8,30 +8,31 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 210 20% 98%;
-    --foreground: 215 25% 15%;
+    /* Light Mode - Clean, Minimalist, "Quiet Luxury" */
+    --background: 210 20% 98%; /* Soft White */
+    --foreground: 216 65% 11%; /* Deep Blue Text for contrast */
 
     --main-background: 210 20% 97%;
 
     --card: 0 0% 100%;
-    --card-foreground: 215 25% 15%;
+    --card-foreground: 216 65% 11%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 215 25% 15%;
+    --popover-foreground: 216 65% 11%;
 
-    --primary: 214 84% 42%;
+    --primary: 40 48% 56%; /* Matte Gold */
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 15% 92%;
-    --secondary-foreground: 215 25% 15%;
+    --secondary: 210 15% 92%; /* Light Slate */
+    --secondary-foreground: 216 65% 11%;
 
     --muted: 210 15% 95%;
     --muted-foreground: 215 15% 45%;
 
     --accent: 210 15% 92%;
-    --accent-foreground: 215 25% 15%;
+    --accent-foreground: 216 65% 11%;
 
-    --success: 142 76% 36%;
+    --success: 140 52% 45%; /* Emerald */
     --success-foreground: 0 0% 100%;
 
     --warning: 38 92% 50%;
@@ -42,72 +43,70 @@ All colors MUST be HSL.
 
     --border: 214 20% 88%;
     --input: 214 20% 88%;
-    --ring: 214 84% 42%;
+    --ring: 40 48% 56%; /* Gold Ring */
 
-    --radius: 0.75rem;
+    --radius: 0.5rem; /* Reduced radius for a more "precise" feel */
 
     --sidebar-background: 215 30% 15%;
     --sidebar-foreground: 210 20% 98%;
-    --sidebar-primary: 214 84% 42%;
+    --sidebar-primary: 40 48% 56%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 215 25% 20%;
     --sidebar-accent-foreground: 210 20% 98%;
     --sidebar-border: 215 25% 20%;
-    --sidebar-ring: 214 84% 42%;
+    --sidebar-ring: 40 48% 56%;
 
     --shadow-sm: 0 1px 2px 0 hsl(215 25% 15% / 0.05);
     --shadow-md: 0 4px 6px -1px hsl(215 25% 15% / 0.1);
     --shadow-lg: 0 10px 15px -3px hsl(215 25% 15% / 0.1);
-
-    --gradient-primary: linear-gradient(135deg, hsl(214 84% 42%), hsl(214 84% 52%));
-    --gradient-success: linear-gradient(135deg, hsl(142 76% 36%), hsl(142 76% 46%));
   }
 
   .dark {
-    --background: 215 25% 10%;
-    --foreground: 210 20% 98%;
+    /* Dark Mode - "Blue Night Deep", FinTech Premium */
+    --background: 216 65% 11%; /* #0A192F Deep Night Blue */
+    --foreground: 210 20% 98%; /* White/Silver */
 
-    --main-background: 215 25% 8%;
+    --main-background: 216 65% 9%;
 
-    --card: 215 25% 12%;
+    --card: 216 50% 13%; /* Slightly lighter deep blue/slate */
     --card-foreground: 210 20% 98%;
 
-    --popover: 215 25% 12%;
+    --popover: 216 50% 13%;
     --popover-foreground: 210 20% 98%;
 
-    --primary: 214 84% 52%;
+    --primary: 40 48% 56%; /* Matte Gold */
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 215 25% 18%;
+    --secondary: 215 25% 25%; /* Metallic Slate */
     --secondary-foreground: 210 20% 98%;
 
-    --muted: 215 25% 15%;
+    --muted: 216 30% 20%;
     --muted-foreground: 215 15% 65%;
 
-    --accent: 215 25% 18%;
+    --accent: 215 25% 25%;
     --accent-foreground: 210 20% 98%;
 
-    --success: 142 76% 46%;
+    --success: 140 52% 55%; /* Subtle Emerald */
     --success-foreground: 0 0% 100%;
 
-    --warning: 38 92% 60%;
+    --warning: 40 90% 60%;
     --warning-foreground: 0 0% 100%;
 
     --destructive: 0 84% 65%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 215 25% 18%;
-    --input: 215 25% 18%;
-    --ring: 214 84% 52%;
+    --border: 216 30% 20%; /* Subtle blue border */
+    --input: 216 30% 20%;
+    --ring: 40 48% 56%; /* Gold Ring */
 
-    --sidebar-background: 215 30% 12%;
+    --sidebar-background: 216 65% 10%;
     --sidebar-foreground: 210 20% 98%;
-    --sidebar-primary: 214 84% 52%;
+    --sidebar-primary: 40 48% 56%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 215 25% 16%;
+    --sidebar-accent: 216 50% 15%;
     --sidebar-accent-foreground: 210 20% 98%;
-    --sidebar-border: 215 25% 16%;
-    --sidebar-ring: 214 84% 52%;
+    --sidebar-border: 216 30% 20%;
+    --sidebar-ring: 40 48% 56%;
   }
 }
 
@@ -121,6 +120,17 @@ All colors MUST be HSL.
   }
 
   h1, h2, h3, h4, h5, h6 {
-    @apply tracking-tight;
+    @apply tracking-tight font-display; /* Use Montserrat for headers */
+  }
+}
+
+@layer utilities {
+  .glass {
+    @apply bg-card/60 backdrop-blur-md border-white/5;
+  }
+
+  /* Additional glass variants if needed */
+  .glass-dark {
+    @apply bg-[#0A192F]/70 backdrop-blur-lg border-white/10;
   }
 }
