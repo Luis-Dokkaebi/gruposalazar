@@ -34,7 +34,7 @@ export function useUserProjects() {
     setError(null);
 
     try {
-      // First check if user has 'soporte_tecnico' role in any project.
+      // First check if user has 'soporte_tecnico' role in any project OR is the global admin.
       // We use .limit(1) to avoid error if user has multiple support roles (e.g. in different projects)
       const { data: supportRoles } = await supabase
         .from('project_members')
@@ -43,7 +43,8 @@ export function useUserProjects() {
         .eq('role', 'soporte_tecnico')
         .limit(1);
 
-      const isSupport = supportRoles && supportRoles.length > 0;
+      // Check specific email for admin access or DB role
+      const isSupport = (user.email === 'armandoag_1996@hotmail.com') || (supportRoles && supportRoles.length > 0);
 
       let projectList: ProjectWithRole[] = [];
 
