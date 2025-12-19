@@ -438,6 +438,7 @@ export type Database = {
         | "compras"
         | "finanzas"
         | "pagos"
+        | "soporte_tecnico"
       estimation_status:
         | "registered"
         | "auth_resident"
@@ -582,6 +583,7 @@ export const Constants = {
         "compras",
         "finanzas",
         "pagos",
+        "soporte_tecnico",
       ],
       estimation_status: [
         "registered",
