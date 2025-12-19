@@ -252,6 +252,7 @@ export function EstimationDetailModal({ estimation, onClose, projectId, onRefres
       finanzas: { label: "Liberar para Pago", canAct: estimation.status === "factura_subida" },
       pagos: { label: "Confirmar Transferencia", canAct: estimation.status === "validated_finanzas" },
       contratista: { label: "", canAct: false },
+      soporte_tecnico: { label: "", canAct: false },
     };
 
     const action = actionMap[currentRole];

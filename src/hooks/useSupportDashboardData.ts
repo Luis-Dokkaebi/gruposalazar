@@ -14,6 +14,7 @@ export interface ProjectStats extends Project {
   status: 'Active' | 'Finished' | 'New';
   leader: Profile | null;
   lastActivity: string | null;
+  estimations: Estimation[];
 }
 
 export interface UserWorkload {
@@ -100,7 +101,8 @@ export function useSupportDashboardData() {
           activeEstimationsCount: estimations.filter((e: any) => e.status !== 'paid').length,
           status,
           leader,
-          lastActivity
+          lastActivity,
+          estimations
         };
       });
 
