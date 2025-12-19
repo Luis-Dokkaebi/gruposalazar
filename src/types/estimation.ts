@@ -5,7 +5,8 @@ export type UserRole =
   | "lider_proyecto"
   | "compras"
   | "finanzas"
-  | "pagos";
+  | "pagos"
+  | "soporte_tecnico";
 
 export type EstimationStatus = 
   | "registered"

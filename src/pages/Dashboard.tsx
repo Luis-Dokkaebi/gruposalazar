@@ -5,10 +5,13 @@ import { FileText, Clock, CheckCircle, AlertCircle } from "lucide-react";
 import { useState } from "react";
 import { EmailModal } from "@/components/EmailModal";
 import { Button } from "@/components/ui/button";
+import { UserManagement } from "@/components/UserManagement";
+import { useNavigate } from "react-router-dom";
 
 export default function Dashboard() {
   const { currentRole, estimations, emailNotifications } = useEstimationStore();
   const [selectedNotification, setSelectedNotification] = useState<typeof emailNotifications[0] | null>(null);
+  const navigate = useNavigate();
 
   // STRICT FILTERING: Only show what's in user's "cancha" (pending work)
   const getRelevantEstimations = () => {
@@ -16,6 +19,11 @@ export default function Dashboard() {
       return estimations; // Contratista sees all their estimations
     }
     
+    // Soporte Técnico sees everything
+    if (currentRole === 'soporte_tecnico') {
+      return estimations;
+    }
+
     return estimations.filter(est => {
       switch (currentRole) {
         case 'residente':
@@ -111,7 +119,7 @@ export default function Dashboard() {
             <FileText className="h-12 w-12 text-muted-foreground/40 mx-auto mb-4" />
             <p className="text-muted-foreground mb-6">No hay estimaciones pendientes</p>
             <Button 
-              onClick={() => window.location.href = '/estimaciones'}
+              onClick={() => navigate('/estimaciones')}
               className="bg-primary hover:bg-primary/90"
             >
               Crear nueva estimación
@@ -123,6 +131,7 @@ export default function Dashboard() {
               <EstimationCard
                 key={estimation.id}
                 estimation={estimation}
+                onClick={currentRole === 'soporte_tecnico' ? () => navigate('/estimaciones') : undefined}
               />
             ))}
           </div>
@@ -133,6 +142,8 @@ export default function Dashboard() {
         notification={selectedNotification}
         onClose={() => setSelectedNotification(null)}
       />
+
+      {currentRole === 'soporte_tecnico' && <UserManagement />}
     </div>
   );
 }
