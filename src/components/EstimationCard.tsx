@@ -10,6 +10,7 @@ interface EstimationCardProps {
   estimation: Estimation;
   onApprove?: () => void;
   onReject?: () => void;
+  onClick?: () => void;
   showActions?: boolean;
 }
 
@@ -24,11 +25,14 @@ const statusLabels: Record<Estimation['status'], { label: string; variant: 'defa
   paid: { label: 'Pagado', variant: 'success' },
 };
 
-export function EstimationCard({ estimation, onApprove, onReject, showActions }: EstimationCardProps) {
+export function EstimationCard({ estimation, onApprove, onReject, onClick, showActions }: EstimationCardProps) {
   const statusInfo = statusLabels[estimation.status];
 
   return (
-    <Card className="p-6 hover:shadow-lg transition-shadow border-border">
+    <Card
+      className={`p-6 hover:shadow-lg transition-shadow border-border ${onClick ? 'cursor-pointer' : ''}`}
+      onClick={onClick}
+    >
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-primary/10 rounded-lg">
@@ -56,14 +60,20 @@ export function EstimationCard({ estimation, onApprove, onReject, showActions }:
       {showActions && (
         <div className="flex gap-2 mt-4">
           <Button 
-            onClick={onApprove} 
+            onClick={(e) => {
+              e.stopPropagation();
+              onApprove?.();
+            }}
             className="flex-1 bg-success hover:bg-success/90"
           >
             <CheckCircle className="h-4 w-4 mr-2" />
             Aprobar
           </Button>
           <Button 
-            onClick={onReject} 
+            onClick={(e) => {
+              e.stopPropagation();
+              onReject?.();
+            }}
             variant="destructive" 
             className="flex-1"
           >

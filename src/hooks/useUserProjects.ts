@@ -34,38 +34,92 @@ export function useUserProjects() {
     setError(null);
 
     try {
-      // Get all projects where user is a member
-      const { data: memberships, error: memberError } = await supabase
+      // First check if user has 'soporte_tecnico' role in any project.
+      // We use .limit(1) to avoid error if user has multiple support roles (e.g. in different projects)
+      const { data: supportRoles } = await supabase
         .from('project_members')
-        .select(`
-          project_id,
-          role,
-          projects (*)
-        `)
-        .eq('user_id', user.id);
+        .select('role')
+        .eq('user_id', user.id)
+        .eq('role', 'soporte_tecnico')
+        .limit(1);
 
-      if (memberError) throw memberError;
+      const isSupport = supportRoles && supportRoles.length > 0;
 
-      // Group by project and collect roles
-      const projectMap = new Map<string, ProjectWithRole>();
-      
-      memberships?.forEach((membership: any) => {
-        const projectId = membership.project_id;
-        const project = membership.projects;
+      let projectList: ProjectWithRole[] = [];
+
+      if (isSupport) {
+        // Support sees ALL projects
+        const { data: allProjects, error: allProjectsError } = await supabase
+          .from('projects')
+          .select('*');
+
+        if (allProjectsError) throw allProjectsError;
+
+        // Map to ProjectWithRole, assigning 'soporte_tecnico' as their role for all of them
+        // or fetching their actual roles + implied support access.
+        // For simplicity and to satisfy the requirement "access to read all",
+        // we'll fetch actual memberships but also include non-member projects with a virtual role if needed,
+        // or just rely on the fact that if they are support, they can access everything.
+        // The ProjectContext uses `roles` to determine permissions.
         
-        if (!project) return;
-        
-        if (projectMap.has(projectId)) {
-          projectMap.get(projectId)!.roles.push(membership.role);
-        } else {
-          projectMap.set(projectId, {
-            ...project,
-            roles: [membership.role]
-          });
-        }
-      });
+        // Let's get actual memberships to be accurate about other roles
+        const { data: memberships, error: memberError } = await supabase
+          .from('project_members')
+          .select(`
+            project_id,
+            role
+          `)
+          .eq('user_id', user.id);
 
-      setProjects(Array.from(projectMap.values()));
+        if (memberError) throw memberError;
+
+        const membershipMap = new Map<string, AppRole[]>();
+        memberships?.forEach((m: any) => {
+             if (!membershipMap.has(m.project_id)) {
+                 membershipMap.set(m.project_id, []);
+             }
+             membershipMap.get(m.project_id)!.push(m.role);
+        });
+
+        projectList = (allProjects || []).map((p: any) => ({
+            ...p,
+            roles: membershipMap.get(p.id) || ['soporte_tecnico'] // Default to support if no other role
+        }));
+
+      } else {
+        // Normal flow: Get all projects where user is a member
+        const { data: memberships, error: memberError } = await supabase
+          .from('project_members')
+          .select(`
+            project_id,
+            role,
+            projects (*)
+          `)
+          .eq('user_id', user.id);
+
+        if (memberError) throw memberError;
+
+        const projectMap = new Map<string, ProjectWithRole>();
+        
+        memberships?.forEach((membership: any) => {
+          const projectId = membership.project_id;
+          const project = membership.projects;
+
+          if (!project) return;
+
+          if (projectMap.has(projectId)) {
+            projectMap.get(projectId)!.roles.push(membership.role);
+          } else {
+            projectMap.set(projectId, {
+              ...project,
+              roles: [membership.role]
+            });
+          }
+        });
+        projectList = Array.from(projectMap.values());
+      }
+
+      setProjects(projectList);
     } catch (err: any) {
       setError(err.message);
     } finally {

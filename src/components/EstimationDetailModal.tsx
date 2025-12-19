@@ -17,6 +17,7 @@ import { Label } from "@/components/ui/label";
 import { CheckCircle2, Upload, FileText, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { ApprovalTimeline } from "./ApprovalTimeline";
+import { NotificationManager } from "./NotificationManager";
 import type { Database } from "@/integrations/supabase/types";
 
 type AppRole = Database['public']['Enums']['app_role'];
@@ -375,6 +376,11 @@ export function EstimationDetailModal({ estimation, onClose, projectId, onRefres
             
             {/* Approval Timeline */}
             <ApprovalTimeline history={estimation.history} />
+
+            {/* Notification Manager for Support */}
+            {currentRole === 'soporte_tecnico' && estimation.id && (
+              <NotificationManager estimationId={estimation.id} />
+            )}
           </div>
         </div>
       </DialogContent>

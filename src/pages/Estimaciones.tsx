@@ -19,8 +19,10 @@ import { Upload, Plus, Loader2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { EstimationCard } from "@/components/EstimationCard";
 import { EmailModal } from "@/components/EmailModal";
+import { EstimationDetailModal } from "@/components/EstimationDetailModal";
 import { mapDbEstimationToFrontend } from "@/lib/estimationMapper";
 import type { Database } from "@/integrations/supabase/types";
+import { Estimation } from "@/types/estimation";
 
 type Contract = Database['public']['Tables']['contracts']['Row'];
 type CostCenter = Database['public']['Tables']['cost_centers']['Row'];
@@ -31,6 +33,7 @@ export default function Estimaciones() {
   const { estimations: dbEstimations, loading, error, createEstimation, refetch } = useProjectEstimations(currentProjectId);
   
   const [selectedNotification, setSelectedNotification] = useState<typeof emailNotifications[0] | null>(null);
+  const [selectedEstimation, setSelectedEstimation] = useState<Estimation | null>(null);
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [costCenters, setCostCenters] = useState<CostCenter[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -124,8 +127,9 @@ export default function Estimaciones() {
   };
 
   // STRICT FILTERING: Only show what's in user's "cancha" (pending work)
-  const relevantEstimations = currentRole === 'contratista' 
-    ? estimations // Contratista sees all their estimations
+  // Soporte Técnico sees everything
+  const relevantEstimations = (currentRole === 'contratista' || currentRole === 'soporte_tecnico')
+    ? estimations
     : estimations.filter(est => {
         switch (currentRole) {
           case 'residente':
@@ -311,7 +315,11 @@ export default function Estimaciones() {
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {relevantEstimations.map((estimation) => (
-              <EstimationCard key={estimation.id} estimation={estimation} />
+              <EstimationCard
+                key={estimation.id}
+                estimation={estimation}
+                onClick={currentRole === 'soporte_tecnico' ? () => setSelectedEstimation(estimation) : undefined}
+              />
             ))}
           </div>
         )}
@@ -321,6 +329,15 @@ export default function Estimaciones() {
         notification={selectedNotification}
         onClose={() => setSelectedNotification(null)}
       />
+
+      {selectedEstimation && (
+        <EstimationDetailModal
+          estimation={selectedEstimation}
+          onClose={() => setSelectedEstimation(null)}
+          projectId={currentProjectId}
+          onRefresh={refetch}
+        />
+      )}
     </div>
   );
 }
