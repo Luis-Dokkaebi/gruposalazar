@@ -1,4 +1,4 @@
-import { LayoutDashboard, FileText, BookOpen, Building2 } from "lucide-react";
+import { LayoutDashboard, FileText, BookOpen, Building2, ShieldCheck } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import {
   Sidebar,
@@ -11,6 +11,9 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { useAuth } from "@/contexts/AuthContext";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 const menuItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
@@ -22,7 +25,28 @@ const menuItems = [
 
 export function AppSidebar() {
   const { state } = useSidebar();
+  const { user } = useAuth();
+  const [isSupport, setIsSupport] = useState(false);
   const collapsed = state === "collapsed";
+
+  useEffect(() => {
+    const checkRole = async () => {
+      if (!user) return;
+      const { data } = await supabase
+        .from('project_members')
+        .select('role')
+        .eq('user_id', user.id)
+        .eq('role', 'soporte_tecnico')
+        .maybeSingle();
+      setIsSupport(!!data);
+    };
+    checkRole();
+  }, [user]);
+
+  const items = [...menuItems];
+  if (isSupport) {
+      items.push({ title: "Supervisión", url: "/support-dashboard", icon: ShieldCheck });
+  }
 
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
@@ -39,7 +63,7 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {menuItems.map((item) => (
+              {items.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
                     <NavLink
