@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useEstimationStore } from "@/lib/estimationStore";
 import { useProject } from "@/contexts/ProjectContext";
 import { useProjectEstimations } from "@/hooks/useProjectEstimations";
+import { useProjectData } from "@/hooks/useProjectData";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -43,9 +44,10 @@ const getFilteredEstimations = (estimations: Estimation[], role: UserRole): Esti
 };
 
 export default function Aprobaciones() {
-  const { currentRole, costCenters, contracts } = useEstimationStore();
+  const { currentRole } = useEstimationStore();
   const { currentProjectId } = useProject();
   const { estimations: dbEstimations, loading, error, refetch } = useProjectEstimations(currentProjectId);
+  const { contracts, costCenters } = useProjectData(currentProjectId);
   
   const [selectedEstimation, setSelectedEstimation] = useState<Estimation | null>(null);
 
