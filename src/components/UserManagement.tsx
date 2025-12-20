@@ -49,11 +49,11 @@ export function UserManagement() {
     }
   };
 
-  const handleFormSubmit = (data: { fullName: string; email: string; role: AppRole; projects: ProjectInfo[] }) => {
+  const handleFormSubmit = async (data: { fullName: string; email: string; role: AppRole; projects: ProjectInfo[] }) => {
     if (editingUser) {
       updateCollaborator(editingUser.id, data);
     } else {
-      addCollaborator(data);
+      await addCollaborator(data);
     }
     setEditingUser(null);
   };

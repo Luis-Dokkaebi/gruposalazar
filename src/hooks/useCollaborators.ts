@@ -122,7 +122,15 @@ export function useCollaborators() {
     mergeData();
   }, [manualCollaborators]);
 
-  const addCollaborator = (data: Omit<ManualCollaborator, 'id' | 'createdAt' | 'isActive' | 'type'>) => {
+  const sendInvitation = async (email: string, projectNames: string[]) => {
+    // Simulating email sending delay and logic
+    console.log(`Enviando invitación a: ${email} para proyectos: ${projectNames.join(", ")}`);
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    console.log(`Invitación enviada: "Has sido invitado a colaborar en el proyecto ${projectNames.join(", ")}"`);
+    return true;
+  };
+
+  const addCollaborator = async (data: Omit<ManualCollaborator, 'id' | 'createdAt' | 'isActive' | 'type'>) => {
     const newCollaborator: ManualCollaborator = {
       ...data,
       id: crypto.randomUUID(),
@@ -131,10 +139,17 @@ export function useCollaborators() {
       createdAt: new Date().toISOString()
     };
 
+    // Trigger notification action
+    const projectNames = data.projects.map(p => p.name);
+    await sendInvitation(data.email, projectNames);
+
     setManualCollaborators(prev => [...prev, newCollaborator]);
+
+    const projectList = projectNames.join(", ");
     toast({
-      title: "Colaborador Registrado",
-      description: "El colaborador externo ha sido agregado exitosamente."
+      title: "Invitación enviada",
+      description: `Usuario agregado e invitación enviada para ${projectList}`,
+      duration: 5000,
     });
   };
 
