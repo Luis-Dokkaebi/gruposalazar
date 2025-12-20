@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Collaborator, ManualCollaborator, SystemCollaborator, ProjectInfo, AppRole } from '@/types/collaborator';
 import { useToast } from "@/hooks/use-toast";
+import { useEstimationStore } from '@/lib/estimationStore';
 
 const STORAGE_KEY = 'manual_collaborators_data';
 
@@ -28,16 +29,49 @@ export function useCollaborators() {
   }, [manualCollaborators]);
 
   const fetchProjects = async () => {
+    // First fetch from Supabase
     const { data, error } = await supabase
       .from('projects')
       .select('id, name')
       .order('name');
 
+    const supabaseProjects: ProjectInfo[] = data || [];
+    
     if (error) {
       console.error('Error fetching projects:', error);
-      return;
     }
-    setAvailableProjects(data || []);
+
+    // Also get unique projects from estimations store (local mock data)
+    const { estimations, costCenters } = useEstimationStore.getState();
+    const estimationProjects: ProjectInfo[] = [];
+    const seenIds = new Set(supabaseProjects.map(p => p.id));
+
+    estimations.forEach(est => {
+      // Use costCenterId as project identifier for estimations
+      if (est.costCenterId && !seenIds.has(est.costCenterId)) {
+        const costCenter = costCenters.find(cc => cc.id === est.costCenterId);
+        if (costCenter) {
+          estimationProjects.push({
+            id: est.costCenterId,
+            name: `${costCenter.name} (Folio: ${est.folio})`
+          });
+          seenIds.add(est.costCenterId);
+        }
+      }
+    });
+
+    // Also add all cost centers as available projects
+    costCenters.forEach(cc => {
+      if (!seenIds.has(cc.id)) {
+        estimationProjects.push({
+          id: cc.id,
+          name: cc.name
+        });
+        seenIds.add(cc.id);
+      }
+    });
+
+    setAvailableProjects([...supabaseProjects, ...estimationProjects]);
   };
 
   const fetchSystemCollaborators = async () => {
