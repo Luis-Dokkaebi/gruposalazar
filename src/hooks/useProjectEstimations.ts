@@ -172,6 +172,7 @@ export function useProjectEstimations(projectId: string | null) {
     estimation_text?: string;
     contract_id?: string;
     cost_center_id?: string;
+    pdf_url?: string;
   }) => {
     if (!user || !projectId) throw new Error('No authenticated user or project');
 
