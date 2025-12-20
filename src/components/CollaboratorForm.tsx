@@ -184,12 +184,15 @@ export function CollaboratorForm({ open, onOpenChange, onSubmit, availableProjec
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {availableProjects
-                          .filter(p => !field.value.includes(p.id))
-                          .map(p => (
-                            <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                          ))
-                        }
+                        {availableProjects.filter(p => !field.value.includes(p.id)).length === 0 ? (
+                          <SelectItem value="no_projects" disabled>No hay proyectos disponibles</SelectItem>
+                        ) : (
+                          availableProjects
+                            .filter(p => !field.value.includes(p.id))
+                            .map(p => (
+                              <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                            ))
+                        )}
                       </SelectContent>
                     </Select>
                   </div>
