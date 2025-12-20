@@ -15,9 +15,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Upload, Plus, Loader2, AlertCircle } from "lucide-react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { Upload, Plus, Loader2, AlertCircle, Eye, Pencil } from "lucide-react";
 import { toast } from "sonner";
-import { EstimationCard } from "@/components/EstimationCard";
 import { EmailModal } from "@/components/EmailModal";
 import { EstimationDetailModal } from "@/components/EstimationDetailModal";
 import { mapDbEstimationToFrontend } from "@/lib/estimationMapper";
@@ -36,8 +52,13 @@ export default function Estimaciones() {
   const [selectedEstimation, setSelectedEstimation] = useState<Estimation | null>(null);
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [costCenters, setCostCenters] = useState<CostCenter[]>([]);
+
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
+  // Filter state: 'all', 'resident', 'superintendent', 'authorized'
+  const [activeFilter, setActiveFilter] = useState("all");
+
   const [formData, setFormData] = useState({
     contractId: "",
     costCenterId: "",
@@ -45,6 +66,7 @@ export default function Estimaciones() {
     estimationText: "",
     amount: "",
     pdfFile: null as File | null,
+    classification: "",
   });
 
   // Fetch contracts and cost centers for the current project
@@ -67,6 +89,45 @@ export default function Estimaciones() {
   // Map DB estimations to frontend format
   const estimations = dbEstimations.map(est => mapDbEstimationToFrontend(est as any));
 
+  // --- Filter Logic ---
+  const filteredEstimations = estimations.filter((est) => {
+    // Status mapping for filters
+    let statusCategory = "other";
+    if (est.status === "registered") statusCategory = "resident";
+    else if (est.status === "auth_resident") statusCategory = "superintendent";
+    else if (["auth_super", "auth_leader", "validated_compras", "factura_subida", "validated_finanzas", "paid"].includes(est.status)) {
+      statusCategory = "authorized";
+    }
+
+    if (activeFilter !== "all" && statusCategory !== activeFilter) {
+      return false;
+    }
+
+    return true;
+  });
+
+  const uploadFile = async (file: File, classification: string) => {
+    const fileExt = file.name.split('.').pop();
+    // Sanitized classification for filename
+    const tag = classification.replace(/\s+/g, '_').toUpperCase();
+    const fileName = `${tag}_${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
+    const filePath = `${fileName}`;
+
+    const { error: uploadError, data } = await supabase.storage
+      .from('estimations')
+      .upload(filePath, file);
+
+    if (uploadError) {
+      throw uploadError;
+    }
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('estimations')
+      .getPublicUrl(filePath);
+
+    return publicUrl;
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setFormData({ ...formData, pdfFile: e.target.files[0] });
@@ -76,13 +137,13 @@ export default function Estimaciones() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.contractId || !formData.costCenterId || !formData.contractorName || !formData.estimationText || !formData.amount) {
-      toast.error("Por favor completa todos los campos requeridos");
+    if (!formData.contractId || !formData.costCenterId || !formData.contractorName || !formData.estimationText || !formData.amount || !formData.classification) {
+      toast.error("Por favor completa todos los campos requeridos, incluyendo la clasificación.");
       return;
     }
 
     if (!formData.pdfFile) {
-      toast.error("Por favor sube un archivo PDF");
+      toast.error("Por favor sube un archivo (PDF o Imagen)");
       return;
     }
 
@@ -94,10 +155,14 @@ export default function Estimaciones() {
     setIsSubmitting(true);
 
     try {
-      // Generate folio and project number
+      // 1. Upload File
+      const publicUrl = await uploadFile(formData.pdfFile, formData.classification);
+
+      // 2. Generate folio and project number
       const folio = `EST-${Date.now().toString(36).toUpperCase()}`;
       const projectNumber = currentProject?.name || 'PROJ-001';
 
+      // 3. Create Estimation
       await createEstimation({
         folio,
         project_number: projectNumber,
@@ -106,9 +171,11 @@ export default function Estimaciones() {
         estimation_text: formData.estimationText,
         contract_id: formData.contractId || undefined,
         cost_center_id: formData.costCenterId || undefined,
+        pdf_url: publicUrl,
       });
 
       toast.success("Estimación creada exitosamente");
+      setIsDialogOpen(false);
       
       // Reset form
       setFormData({
@@ -118,36 +185,39 @@ export default function Estimaciones() {
         estimationText: "",
         amount: "",
         pdfFile: null,
+        classification: "",
       });
     } catch (err: any) {
+      console.error(err);
       toast.error(`Error: ${err.message}`);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // STRICT FILTERING: Only show what's in user's "cancha" (pending work)
-  // Soporte Técnico sees everything
-  const relevantEstimations = (currentRole === 'contratista' || currentRole === 'soporte_tecnico')
-    ? estimations
-    : estimations.filter(est => {
-        switch (currentRole) {
-          case 'residente':
-            return est.status === 'registered';
-          case 'superintendente':
-            return est.status === 'auth_resident';
-          case 'lider_proyecto':
-            return est.status === 'auth_super';
-          case 'compras':
-            return est.status === 'auth_leader';
-          case 'finanzas':
-            return est.status === 'factura_subida';
-          case 'pagos':
-            return est.status === 'validated_finanzas';
-          default:
-            return false;
-        }
-      });
+  // Helper for Status Badge
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "registered":
+        return <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 hover:bg-yellow-200">En Revisión: Residente</Badge>;
+      case "auth_resident":
+        return <Badge variant="secondary" className="bg-orange-100 text-orange-800 hover:bg-orange-200">En Revisión: Superintendente</Badge>;
+      case "auth_super":
+        return <Badge variant="default" className="bg-blue-600">Autorizada: Super</Badge>;
+      case "auth_leader":
+        return <Badge variant="default" className="bg-green-600">Autorizada: Líder</Badge>;
+      case "validated_compras":
+        return <Badge variant="outline" className="border-blue-600 text-blue-600">Validada: Compras</Badge>;
+      case "factura_subida":
+        return <Badge variant="outline" className="border-green-600 text-green-600">Factura Subida</Badge>;
+      case "validated_finanzas":
+        return <Badge variant="outline" className="border-purple-600 text-purple-600">Validada: Finanzas</Badge>;
+      case "paid":
+        return <Badge variant="default" className="bg-emerald-600">Pagada</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
+    }
+  };
 
   if (!currentProjectId) {
     return (
@@ -168,161 +238,243 @@ export default function Estimaciones() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold text-foreground">Mis Estimaciones</h1>
-        <p className="text-muted-foreground mt-2">
-          Gestiona y crea nuevas estimaciones de obra
-        </p>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">Mis Estimaciones</h1>
+          <p className="text-muted-foreground mt-2">
+            Gestiona y visualiza el estado de tus estimaciones
+          </p>
+        </div>
+
+        {/* STRICT ROLE LOGIC: Only Contractor can see the New Estimation Button */}
+        {currentRole === "contratista" && (
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Nueva Estimación
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Nueva Estimación</DialogTitle>
+              </DialogHeader>
+
+              <form onSubmit={handleSubmit} className="space-y-6 mt-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="contract">Contrato *</Label>
+                    <Select
+                      value={formData.contractId}
+                      onValueChange={(value) => setFormData({ ...formData, contractId: value })}
+                    >
+                      <SelectTrigger id="contract" className="bg-background">
+                        <SelectValue placeholder="Selecciona un contrato" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-popover">
+                        {contracts.map((contract) => (
+                          <SelectItem key={contract.id} value={contract.id}>
+                            {contract.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="costCenter">Centro de Costos *</Label>
+                    <Select
+                      value={formData.costCenterId}
+                      onValueChange={(value) => setFormData({ ...formData, costCenterId: value })}
+                    >
+                      <SelectTrigger id="costCenter" className="bg-background">
+                        <SelectValue placeholder="Selecciona un centro de costos" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-popover">
+                        {costCenters.map((center) => (
+                          <SelectItem key={center.id} value={center.id}>
+                            {center.name} ({center.code})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="contractor">Nombre del Contratista *</Label>
+                    <Input
+                      id="contractor"
+                      value={formData.contractorName}
+                      onChange={(e) => setFormData({ ...formData, contractorName: e.target.value })}
+                      placeholder="Nombre completo"
+                      className="bg-background"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="amount">Monto de la Estimación *</Label>
+                    <Input
+                      id="amount"
+                      type="number"
+                      step="0.01"
+                      value={formData.amount}
+                      onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                      placeholder="0.00"
+                      className="bg-background"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="classification">Clasificación de Documento *</Label>
+                    <Select
+                      value={formData.classification}
+                      onValueChange={(value) => setFormData({ ...formData, classification: value })}
+                    >
+                      <SelectTrigger id="classification" className="bg-background">
+                        <SelectValue placeholder="Selecciona a quién corresponde" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-popover">
+                        <SelectItem value="Para Residente">Para Residente</SelectItem>
+                        <SelectItem value="Para Superintendente">Para Superintendente</SelectItem>
+                        <SelectItem value="Para Líder de Proyecto">Para Líder de Proyecto</SelectItem>
+                        <SelectItem value="Generador de Obra">Generador de Obra</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">Etiqueta requerida para el filtrado de evidencias.</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="pdf">Carga de Evidencia (PDF/Imagen) *</Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        id="pdf"
+                        type="file"
+                        accept=".pdf,image/*"
+                        onChange={handleFileChange}
+                        className="bg-background"
+                      />
+                    </div>
+                    {formData.pdfFile && (
+                      <p className="text-sm text-green-600 mt-1">
+                        Archivo: {formData.pdfFile.name}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="description">Descripción *</Label>
+                  <Textarea
+                    id="description"
+                    value={formData.estimationText}
+                    onChange={(e) => setFormData({ ...formData, estimationText: e.target.value })}
+                    placeholder="Describe los conceptos incluidos..."
+                    className="min-h-[100px] bg-background"
+                  />
+                </div>
+
+                <div className="flex justify-end gap-2">
+                  <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Cancelar</Button>
+                  <Button type="submit" disabled={isSubmitting}>
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Subiendo...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="h-4 w-4 mr-2" />
+                        Crear Estimación
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
 
-      {currentRole === "contratista" && (
-        <Card className="p-6 border-border">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="p-2 bg-primary/10 rounded-lg">
-              <Plus className="h-5 w-5 text-primary" />
+      <div className="space-y-4">
+        {/* Quick Filters */}
+        <Tabs defaultValue="all" value={activeFilter} onValueChange={setActiveFilter} className="w-full">
+          <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 lg:w-[800px]">
+            <TabsTrigger value="all">Todas</TabsTrigger>
+            <TabsTrigger value="resident">En Revisión: Residente</TabsTrigger>
+            <TabsTrigger value="superintendent">En Revisión: Superintendente</TabsTrigger>
+            <TabsTrigger value="authorized">Autorizadas</TabsTrigger>
+          </TabsList>
+        </Tabs>
+
+        {/* Table View */}
+        <Card className="border-border overflow-hidden">
+          {loading ? (
+            <div className="p-12 text-center">
+              <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+              <p className="text-muted-foreground mt-4">Cargando estimaciones...</p>
             </div>
-            <h2 className="text-xl font-semibold text-foreground">Nueva Estimación</h2>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label htmlFor="contract" className="text-foreground">Contrato</Label>
-                <Select
-                  value={formData.contractId}
-                  onValueChange={(value) => setFormData({ ...formData, contractId: value })}
-                >
-                  <SelectTrigger id="contract" className="bg-background">
-                    <SelectValue placeholder="Selecciona un contrato" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-popover">
-                    {contracts.map((contract) => (
-                      <SelectItem key={contract.id} value={contract.id}>
-                        {contract.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="costCenter" className="text-foreground">Centro de Costos</Label>
-                <Select
-                  value={formData.costCenterId}
-                  onValueChange={(value) => setFormData({ ...formData, costCenterId: value })}
-                >
-                  <SelectTrigger id="costCenter" className="bg-background">
-                    <SelectValue placeholder="Selecciona un centro de costos" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-popover">
-                    {costCenters.map((center) => (
-                      <SelectItem key={center.id} value={center.id}>
-                        {center.name} ({center.code})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="contractor" className="text-foreground">Nombre del Contratista</Label>
-                <Input
-                  id="contractor"
-                  value={formData.contractorName}
-                  onChange={(e) => setFormData({ ...formData, contractorName: e.target.value })}
-                  placeholder="Nombre completo"
-                  className="bg-background"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="amount" className="text-foreground">Monto de la Estimación</Label>
-                <Input
-                  id="amount"
-                  type="number"
-                  step="0.01"
-                  value={formData.amount}
-                  onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                  placeholder="0.00"
-                  className="bg-background"
-                />
-              </div>
+          ) : error ? (
+            <div className="p-12 text-center">
+              <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
+              <p className="text-destructive">{error}</p>
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="pdf" className="text-foreground">Archivo PDF</Label>
-              <div className="flex items-center gap-2">
-                <Input
-                  id="pdf"
-                  type="file"
-                  accept=".pdf"
-                  onChange={handleFileChange}
-                  className="bg-background"
-                />
-                <Upload className="h-5 w-5 text-muted-foreground" />
-              </div>
-              {formData.pdfFile && (
-                <p className="text-sm text-muted-foreground">
-                  Archivo seleccionado: {formData.pdfFile.name}
-                </p>
-              )}
+          ) : filteredEstimations.length === 0 ? (
+             <div className="p-12 text-center">
+              <p className="text-muted-foreground">No se encontraron estimaciones con este filtro.</p>
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="description" className="text-foreground">Descripción de la Estimación</Label>
-              <Textarea
-                id="description"
-                value={formData.estimationText}
-                onChange={(e) => setFormData({ ...formData, estimationText: e.target.value })}
-                placeholder="Describe los conceptos incluidos en esta estimación..."
-                className="min-h-[100px] bg-background"
-              />
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Folio</TableHead>
+                    <TableHead>Contratista</TableHead>
+                    <TableHead>Monto</TableHead>
+                    <TableHead>Estado</TableHead>
+                    <TableHead>Fecha</TableHead>
+                    <TableHead className="text-right">Acciones</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredEstimations.map((est) => (
+                    <TableRow key={est.id}>
+                      <TableCell className="font-medium">{est.folio}</TableCell>
+                      <TableCell>{est.contractorName}</TableCell>
+                      <TableCell>${est.amount.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</TableCell>
+                      <TableCell>{getStatusBadge(est.status)}</TableCell>
+                      <TableCell>{new Date(est.createdAt).toLocaleDateString()}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setSelectedEstimation(est)}
+                            title="Ver Detalles"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          {/* Only show Edit if contractor and status is editable */}
+                           {currentRole === 'contratista' && est.status === 'registered' && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              title="Editar"
+                              onClick={() => setSelectedEstimation(est)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                           )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
-
-            <Button type="submit" className="w-full md:w-auto" disabled={isSubmitting}>
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Creando...
-                </>
-              ) : (
-                <>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Crear Estimación
-                </>
-              )}
-            </Button>
-          </form>
+          )}
         </Card>
-      )}
-
-      <div>
-        <h2 className="text-2xl font-bold text-foreground mb-4">Historial de Estimaciones</h2>
-        {loading ? (
-          <Card className="p-12 text-center border-border">
-            <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
-            <p className="text-muted-foreground mt-4">Cargando estimaciones...</p>
-          </Card>
-        ) : error ? (
-          <Card className="p-12 text-center border-border">
-            <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
-            <p className="text-destructive">{error}</p>
-          </Card>
-        ) : relevantEstimations.length === 0 ? (
-          <Card className="p-12 text-center border-border">
-            <p className="text-muted-foreground">No hay estimaciones registradas</p>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {relevantEstimations.map((estimation) => (
-              <EstimationCard
-                key={estimation.id}
-                estimation={estimation}
-                onClick={currentRole === 'soporte_tecnico' ? () => setSelectedEstimation(estimation) : undefined}
-              />
-            ))}
-          </div>
-        )}
       </div>
 
       <EmailModal
