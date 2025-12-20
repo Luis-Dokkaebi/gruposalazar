@@ -214,6 +214,37 @@ export function useCollaborators() {
     }
   };
 
+  const deleteCollaborator = async (id: string, type: 'manual' | 'system') => {
+    if (type === 'manual') {
+      setManualCollaborators(prev => prev.filter(c => c.id !== id));
+      toast({
+        title: "Colaborador eliminado",
+        description: "El usuario ha sido eliminado correctamente.",
+      });
+    } else {
+      // For system users, we remove all their project assignments (which effectively removes them from this view)
+      const { error } = await supabase
+        .from('project_members')
+        .delete()
+        .eq('user_id', id);
+
+      if (error) {
+        toast({
+          title: "Error al eliminar usuario",
+          description: error.message,
+          variant: "destructive"
+        });
+        return;
+      }
+
+      toast({
+        title: "Usuario eliminado",
+        description: "El usuario ha sido removido de todos los proyectos.",
+      });
+      refresh(); // Refresh to update list from DB
+    }
+  };
+
   return {
     collaborators,
     loading,
@@ -221,6 +252,7 @@ export function useCollaborators() {
     addCollaborator,
     updateCollaborator,
     toggleStatus,
+    deleteCollaborator,
     refresh
   };
 }

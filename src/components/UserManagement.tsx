@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { useCollaborators } from "@/hooks/useCollaborators";
 import { CollaboratorForm } from "./CollaboratorForm";
-import { Plus, UserCog, Pencil } from "lucide-react";
+import { Plus, UserCog, Pencil, Trash2 } from "lucide-react";
 import { AppRole, ManualCollaborator, Collaborator, ProjectInfo } from '@/types/collaborator';
 import { useToast } from "@/hooks/use-toast";
 
@@ -16,6 +16,7 @@ export function UserManagement() {
     addCollaborator,
     updateCollaborator,
     toggleStatus,
+    deleteCollaborator,
     availableProjects
   } = useCollaborators();
 
@@ -46,6 +47,15 @@ export function UserManagement() {
         variant: "default" // Not destructive, just info
       });
       // Optionally we could show a dialog to just change the role if simplified.
+    }
+  };
+
+  const handleDelete = (user: Collaborator) => {
+    const isConfirmed = window.confirm(
+      `¿Estás seguro de que deseas eliminar a ${user.fullName || 'este usuario'}? Esta acción no se puede deshacer.`
+    );
+    if (isConfirmed) {
+      deleteCollaborator(user.id, user.type);
     }
   };
 
@@ -172,14 +182,24 @@ export function UserManagement() {
                           </div>
                         </td>
                         <td className="px-6 py-4 text-right">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-gray-400 hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity"
-                            onClick={() => handleEdit(user)}
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                          </Button>
+                          <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-gray-400 hover:text-primary"
+                              onClick={() => handleEdit(user)}
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-gray-400 hover:text-destructive"
+                              onClick={() => handleDelete(user)}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
                         </td>
                       </tr>
                     ))
