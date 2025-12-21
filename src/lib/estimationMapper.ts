@@ -32,6 +32,15 @@ export function mapDbEstimationToFrontend(dbEstimation: DbEstimationWithHistory)
     estimationText: dbEstimation.estimation_text || '',
     amount: Number(dbEstimation.amount),
     history: (dbEstimation.history || []).map(mapDbHistoryToFrontend),
+    // Signature inheritance fields
+    resident_signed_by: (dbEstimation as any).resident_signed_by || null,
+    superintendent_signed_by: (dbEstimation as any).superintendent_signed_by || null,
+    leader_signed_by: (dbEstimation as any).leader_signed_by || null,
+    // Raw DB fields for ApprovalSummary
+    resident_approved_at: dbEstimation.resident_approved_at,
+    superintendent_approved_at: dbEstimation.superintendent_approved_at,
+    leader_approved_at: dbEstimation.leader_approved_at,
+    compras_approved_at: dbEstimation.compras_approved_at,
   };
 }
 
