@@ -139,13 +139,16 @@ export type Database = {
           invoice_uploaded_at: string | null
           invoice_url: string | null
           leader_approved_at: string | null
+          leader_signed_by: string | null
           paid_at: string | null
           pdf_url: string | null
           project_id: string
           project_number: string
           resident_approved_at: string | null
+          resident_signed_by: string | null
           status: Database["public"]["Enums"]["estimation_status"]
           superintendent_approved_at: string | null
+          superintendent_signed_by: string | null
           updated_at: string | null
         }
         Insert: {
@@ -163,13 +166,16 @@ export type Database = {
           invoice_uploaded_at?: string | null
           invoice_url?: string | null
           leader_approved_at?: string | null
+          leader_signed_by?: string | null
           paid_at?: string | null
           pdf_url?: string | null
           project_id: string
           project_number: string
           resident_approved_at?: string | null
+          resident_signed_by?: string | null
           status?: Database["public"]["Enums"]["estimation_status"]
           superintendent_approved_at?: string | null
+          superintendent_signed_by?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -187,13 +193,16 @@ export type Database = {
           invoice_uploaded_at?: string | null
           invoice_url?: string | null
           leader_approved_at?: string | null
+          leader_signed_by?: string | null
           paid_at?: string | null
           pdf_url?: string | null
           project_id?: string
           project_number?: string
           resident_approved_at?: string | null
+          resident_signed_by?: string | null
           status?: Database["public"]["Enums"]["estimation_status"]
           superintendent_approved_at?: string | null
+          superintendent_signed_by?: string | null
           updated_at?: string | null
         }
         Relationships: [
@@ -357,6 +366,9 @@ export type Database = {
           created_by: string | null
           description: string | null
           id: string
+          is_leader_active: boolean
+          is_resident_active: boolean
+          is_superintendent_active: boolean
           name: string
           updated_at: string | null
         }
@@ -365,6 +377,9 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           id?: string
+          is_leader_active?: boolean
+          is_resident_active?: boolean
+          is_superintendent_active?: boolean
           name: string
           updated_at?: string | null
         }
@@ -373,6 +388,9 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           id?: string
+          is_leader_active?: boolean
+          is_resident_active?: boolean
+          is_superintendent_active?: boolean
           name?: string
           updated_at?: string | null
         }
@@ -415,6 +433,17 @@ export type Database = {
       get_required_role_for_status: {
         Args: { _status: Database["public"]["Enums"]["estimation_status"] }
         Returns: Database["public"]["Enums"]["app_role"]
+      }
+      get_skipped_roles_for_signing: {
+        Args: {
+          _current_status: Database["public"]["Enums"]["estimation_status"]
+          _project_id: string
+          _target_status: Database["public"]["Enums"]["estimation_status"]
+        }
+        Returns: {
+          role_name: string
+          status_key: Database["public"]["Enums"]["estimation_status"]
+        }[]
       }
       has_project_role: {
         Args: {

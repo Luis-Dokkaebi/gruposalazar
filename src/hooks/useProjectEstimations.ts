@@ -64,7 +64,7 @@ export function useProjectEstimations(projectId: string | null) {
   ) => {
     if (!user || !projectId) throw new Error('No authenticated user or project');
 
-    // Get the estimation
+    // Get the estimation current status
     const { data: estimation, error: estError } = await supabase
       .from('estimations')
       .select('status')
@@ -73,7 +73,7 @@ export function useProjectEstimations(projectId: string | null) {
 
     if (estError) throw estError;
 
-    // Call the database function to get the next status
+    // Call the database function to get the next status (considers active roles)
     const { data: nextStatus, error: statusError } = await supabase
       .rpc('get_next_approval_status', {
         _project_id: projectId,
@@ -82,8 +82,8 @@ export function useProjectEstimations(projectId: string | null) {
 
     if (statusError) throw statusError;
 
-    // Update the estimation
-    const updateData: Partial<Estimation> = {
+    // Prepare update data
+    const updateData: Record<string, any> = {
       status: nextStatus as EstimationStatus
     };
 
@@ -110,6 +110,47 @@ export function useProjectEstimations(projectId: string | null) {
         break;
     }
 
+    // Handle signature inheritance for skipped roles
+    // Get project role configuration
+    const { data: projectConfig } = await supabase
+      .from('projects')
+      .select('is_resident_active, is_superintendent_active, is_leader_active')
+      .eq('id', projectId)
+      .single();
+
+    if (projectConfig) {
+      // Calculate which roles should be auto-signed based on current status and next status
+      const statusOrder = ['registered', 'auth_resident', 'auth_super', 'auth_leader', 'validated_compras'];
+      const currentIdx = statusOrder.indexOf(estimation.status);
+      const nextIdx = statusOrder.indexOf(nextStatus);
+
+      // Auto-fill signatures for skipped roles
+      for (let i = currentIdx + 1; i < nextIdx; i++) {
+        const skippedStatus = statusOrder[i];
+        switch (skippedStatus) {
+          case 'auth_resident':
+            if (!projectConfig.is_resident_active) {
+              updateData.resident_approved_at = now;
+              updateData.resident_signed_by = userName;
+            }
+            break;
+          case 'auth_super':
+            if (!projectConfig.is_superintendent_active) {
+              updateData.superintendent_approved_at = now;
+              updateData.superintendent_signed_by = userName;
+            }
+            break;
+          case 'auth_leader':
+            if (!projectConfig.is_leader_active) {
+              updateData.leader_approved_at = now;
+              updateData.leader_signed_by = userName;
+            }
+            break;
+        }
+      }
+    }
+
+    // Update the estimation
     const { error: updateError } = await supabase
       .from('estimations')
       .update(updateData)
@@ -117,7 +158,7 @@ export function useProjectEstimations(projectId: string | null) {
 
     if (updateError) throw updateError;
 
-    // Add to approval history
+    // Add to approval history (main approval)
     const { error: historyError } = await supabase
       .from('approval_history')
       .insert({

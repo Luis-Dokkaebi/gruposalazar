@@ -70,6 +70,15 @@ export interface Estimation {
   estimationText: string;
   amount: number;
   history: ApprovalHistoryEntry[];
+  // Inheritance signature fields
+  resident_signed_by?: string | null;
+  superintendent_signed_by?: string | null;
+  leader_signed_by?: string | null;
+  // DB format fields for compatibility
+  resident_approved_at?: string | null;
+  superintendent_approved_at?: string | null;
+  leader_approved_at?: string | null;
+  compras_approved_at?: string | null;
 }
 
 export interface EmailNotification {

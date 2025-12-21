@@ -17,13 +17,18 @@ import { Label } from "@/components/ui/label";
 import { CheckCircle2, Upload, FileText, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { ApprovalTimeline } from "./ApprovalTimeline";
+import { ApprovalSummary } from "./ApprovalSummary";
 import { NotificationManager } from "./NotificationManager";
 import type { Database } from "@/integrations/supabase/types";
 
 type AppRole = Database['public']['Enums']['app_role'];
 
 interface EstimationDetailModalProps {
-  estimation: Estimation;
+  estimation: Estimation & {
+    resident_signed_by?: string | null;
+    superintendent_signed_by?: string | null;
+    leader_signed_by?: string | null;
+  };
   onClose: () => void;
   projectId?: string | null;
   onRefresh?: () => void;
@@ -374,6 +379,9 @@ export function EstimationDetailModal({ estimation, onClose, projectId, onRefres
 
             {/* Action Button */}
             {getActionButton()}
+            
+            {/* Approval Summary - Shows who signed for whom */}
+            <ApprovalSummary estimation={estimation} />
             
             {/* Approval Timeline */}
             <ApprovalTimeline history={estimation.history} />
