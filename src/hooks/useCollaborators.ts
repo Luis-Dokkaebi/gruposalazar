@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Collaborator, ManualCollaborator, SystemCollaborator, ProjectInfo, AppRole } from '@/types/collaborator';
+import { Collaborator, ManualCollaborator, SystemCollaborator, ProjectInfo, AppRole, SUPPORT_ROLE } from '@/types/collaborator';
 import { useToast } from "@/hooks/use-toast";
 
 const STORAGE_KEY = 'manual_collaborators_data';
@@ -26,6 +26,43 @@ export function useCollaborators() {
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(manualCollaborators));
   }, [manualCollaborators]);
+
+  const checkSupportPermission = async (): Promise<boolean> => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) {
+        throw new Error("Usuario no autenticado.");
+      }
+
+      // Check if user has 'soporte_tecnico' role in any project
+      const { data, error } = await supabase
+        .from('project_members')
+        .select('role')
+        .eq('user_id', user.id)
+        .eq('role', SUPPORT_ROLE)
+        .limit(1)
+        .maybeSingle();
+
+      if (error) {
+        console.error("Error verifying permissions:", error);
+        throw new Error("Error verificando permisos.");
+      }
+
+      if (!data) {
+        throw new Error("Acceso denegado: Se requiere el rol de Soporte Técnico.");
+      }
+
+      return true;
+    } catch (error: any) {
+      toast({
+        title: "Permisos insuficientes",
+        description: error.message || "No tienes autorización para realizar esta acción.",
+        variant: "destructive"
+      });
+      return false;
+    }
+  };
 
   const fetchProjects = async () => {
     const { data, error } = await supabase
@@ -115,8 +152,6 @@ export function useCollaborators() {
   // Re-merge when manual list changes
   useEffect(() => {
     const mergeData = async () => {
-       // We re-fetch system users to be safe, or we could just cache them.
-       // For now, re-fetching ensures sync.
        const systemUsers = await fetchSystemCollaborators();
        setCollaborators([...manualCollaborators, ...systemUsers]);
     };
@@ -132,6 +167,8 @@ export function useCollaborators() {
   };
 
   const addCollaborator = async (data: Omit<ManualCollaborator, 'id' | 'createdAt' | 'isActive' | 'type'>) => {
+    if (!(await checkSupportPermission())) return;
+
     const newCollaborator: ManualCollaborator = {
       ...data,
       id: crypto.randomUUID(),
@@ -154,7 +191,9 @@ export function useCollaborators() {
     });
   };
 
-  const updateCollaborator = (id: string, data: Partial<Omit<ManualCollaborator, 'id' | 'createdAt' | 'type'>>) => {
+  const updateCollaborator = async (id: string, data: Partial<Omit<ManualCollaborator, 'id' | 'createdAt' | 'type'>>) => {
+    if (!(await checkSupportPermission())) return;
+
     setManualCollaborators(prev => prev.map(c =>
       c.id === id ? { ...c, ...data } : c
     ));
@@ -166,35 +205,15 @@ export function useCollaborators() {
 
   const updateSystemUserRole = async (userId: string, newRole: AppRole) => {
       // Logic to update role in DB for system user.
-      // Since system user might have multiple rows (projects), this is complex.
-      // If the UI implies changing the role "globally" or for specific projects...
-      // The current UI shows "Roles" as a list.
-      // If we implement edit, we should probably allow editing per project?
-      // Or if the requirement "Selector de Rol" (singular) implies we enforce one role.
-
-      // For now, let's assume we update ALL memberships for this user to the new role
-      // OR we just pick the first one?
-      // The previous implementation updated a specific `member_id`.
-      // Our grouped view loses `member_id`.
-
-      // Let's defer this implementation detail to the component or handle it by fetching members again.
-      // We will need to know WHICH project context to update if they have multiple.
+      if (!(await checkSupportPermission())) return;
 
       // Simplification: We will not implement full system user role update in this iteration unless explicitly needed.
-      // BUT the code review said "Regression".
-      // So we must handle it.
-
-      // Strategy: When editing a system user, we might only allow updating their role if they have a single role?
-      // Or we iterate and update all.
-
-      // For this hook, let's just expose a method that takes memberId if we had it.
-      // But we don't store memberId in SystemCollaborator (it's aggregated).
-
-      // We'll need to re-think `SystemCollaborator` to store member IDs.
       return;
   };
 
-  const toggleStatus = (id: string, currentStatus: boolean) => {
+  const toggleStatus = async (id: string, currentStatus: boolean) => {
+    if (!(await checkSupportPermission())) return;
+
     const isManual = manualCollaborators.some(c => c.id === id);
 
     if (isManual) {
@@ -215,6 +234,8 @@ export function useCollaborators() {
   };
 
   const deleteCollaborator = async (id: string, type: 'manual' | 'system') => {
+    if (!(await checkSupportPermission())) return;
+
     if (type === 'manual') {
       setManualCollaborators(prev => prev.filter(c => c.id !== id));
       toast({

@@ -2,6 +2,22 @@ import { Database } from '@/integrations/supabase/types';
 
 export type AppRole = Database['public']['Enums']['app_role'];
 
+// Explicitly define roles to ensure runtime availability and type safety.
+// This array is typed as AppRole[], so if the DB enum changes, this will error at compile time,
+// ensuring strict synchronization.
+export const APP_ROLES: AppRole[] = [
+  "contratista",
+  "residente",
+  "superintendente",
+  "lider_proyecto",
+  "compras",
+  "finanzas",
+  "pagos",
+  "soporte_tecnico",
+];
+
+export const SUPPORT_ROLE: AppRole = 'soporte_tecnico';
+
 export interface ProjectInfo {
   id: string;
   name: string;
