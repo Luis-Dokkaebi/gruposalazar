@@ -87,9 +87,10 @@ export function ProjectsTable({ projects, loading }: ProjectsTableProps) {
 
   return (
     <>
-      <Card>
-        <CardHeader>
-          <CardTitle>Listado Maestro de Proyectos</CardTitle>
+      <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <Card>
+          <CardHeader>
+            <CardTitle>Listado Maestro de Proyectos</CardTitle>
           <div className="flex flex-col gap-4 mt-4">
             <div className="flex flex-col md:flex-row gap-4">
                 <Input
@@ -205,17 +206,17 @@ export function ProjectsTable({ projects, loading }: ProjectsTableProps) {
                   </TableRow>
                 ) : (
                   filteredProjects.map((project) => (
-                    <TableRow key={project.id}>
+                    <TableRow key={project.id} className="group hover:bg-muted/50 transition-colors duration-200">
                       <TableCell className="font-medium">{project.name}</TableCell>
                       <TableCell>
                         <Badge
-                          variant={
-                            project.status === "Active"
-                              ? "default"
-                              : project.status === "Finished"
-                              ? "secondary"
-                              : "outline"
-                          }
+                          variant="outline"
+                          className={cn(
+                            "border transition-colors",
+                            project.status === "Active" && "bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-100",
+                            project.status === "New" && "bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-100",
+                            project.status === "Finished" && "bg-slate-100 text-slate-800 border-slate-200 hover:bg-slate-100"
+                          )}
                         >
                           {project.status === "Active" ? "Activo" :
                            project.status === "Finished" ? "Finalizado" : "Nuevo"}
@@ -227,10 +228,15 @@ export function ProjectsTable({ projects, loading }: ProjectsTableProps) {
                         {project.leader?.full_name || project.leader?.email || "Sin asignar"}
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="sm" onClick={() => {
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
                             setSelectedProject(project);
                             setDetailOpen(true);
-                        }}>
+                          }}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                        >
                           <Eye className="h-4 w-4" />
                           <span className="sr-only">Ver Detalles</span>
                         </Button>
@@ -245,7 +251,8 @@ export function ProjectsTable({ projects, loading }: ProjectsTableProps) {
               Mostrando {filteredProjects.length} de {projects.length} proyectos
           </div>
         </CardContent>
-      </Card>
+        </Card>
+      </div>
 
       <ProjectDetailModal
         project={selectedProject}
