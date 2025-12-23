@@ -158,16 +158,52 @@ export function useCollaborators() {
     mergeData();
   }, [manualCollaborators]);
 
-  const sendInvitation = async (email: string, projectNames: string[]) => {
-    // Simulating email sending delay and logic
-    console.log(`Enviando invitación a: ${email} para proyectos: ${projectNames.join(", ")}`);
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    console.log(`Invitación enviada: "Has sido invitado a colaborar en el proyecto ${projectNames.join(", ")}"`);
-    return true;
+  const sendInvitationEmail = async (
+    email: string, 
+    inviteUrl: string, 
+    projectName: string, 
+    role: AppRole,
+    inviterName?: string
+  ): Promise<boolean> => {
+    try {
+      const { data, error } = await supabase.functions.invoke('send-invitation-email', {
+        body: {
+          email,
+          inviteUrl,
+          projectName,
+          role,
+          inviterName
+        }
+      });
+
+      if (error) {
+        console.error('Error sending invitation email:', error);
+        return false;
+      }
+
+      console.log('Invitation email sent successfully:', data);
+      return data?.success ?? false;
+    } catch (error) {
+      console.error('Error invoking send-invitation-email function:', error);
+      return false;
+    }
   };
 
   const addCollaborator = async (data: Omit<ManualCollaborator, 'id' | 'createdAt' | 'isActive' | 'type'>) => {
     if (!(await checkSupportPermission())) return;
+
+    // Get current user info for inviter name
+    const { data: { user } } = await supabase.auth.getUser();
+    let inviterName: string | undefined;
+    
+    if (user) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', user.id)
+        .single();
+      inviterName = profile?.full_name || user.email;
+    }
 
     const newCollaborator: ManualCollaborator = {
       ...data,
@@ -177,18 +213,86 @@ export function useCollaborators() {
       createdAt: new Date().toISOString()
     };
 
-    // Trigger notification action
-    const projectNames = data.projects.map(p => p.name);
-    await sendInvitation(data.email, projectNames);
+    // Send invitation email for each project
+    let emailsSent = 0;
+    let emailsFailed = 0;
+
+    for (const project of data.projects) {
+      try {
+        // Create invitation in DB and get invite URL
+        const { data: invitationId, error: inviteError } = await supabase.rpc('create_project_invitation', {
+          _project_id: project.id,
+          _role: data.role,
+          _email: data.email,
+          _expires_in_days: 7
+        });
+
+        if (inviteError) {
+          console.error('Error creating invitation:', inviteError);
+          emailsFailed++;
+          continue;
+        }
+
+        // Get the invitation token
+        const { data: invitation, error: fetchError } = await supabase
+          .from('project_invitations')
+          .select('token')
+          .eq('id', invitationId)
+          .single();
+
+        if (fetchError || !invitation) {
+          console.error('Error fetching invitation token:', fetchError);
+          emailsFailed++;
+          continue;
+        }
+
+        const inviteUrl = `${window.location.origin}/invite?token=${invitation.token}`;
+
+        // Send the email
+        const success = await sendInvitationEmail(
+          data.email,
+          inviteUrl,
+          project.name,
+          data.role,
+          inviterName
+        );
+
+        if (success) {
+          emailsSent++;
+        } else {
+          emailsFailed++;
+        }
+      } catch (error) {
+        console.error('Error processing invitation for project:', project.name, error);
+        emailsFailed++;
+      }
+    }
 
     setManualCollaborators(prev => [...prev, newCollaborator]);
 
-    const projectList = projectNames.join(", ");
-    toast({
-      title: "Invitación enviada",
-      description: `Usuario agregado e invitación enviada para ${projectList}`,
-      duration: 5000,
-    });
+    const projectList = data.projects.map(p => p.name).join(", ");
+    
+    if (emailsSent > 0 && emailsFailed === 0) {
+      toast({
+        title: "Invitación enviada",
+        description: `Correo de invitación enviado a ${data.email} para: ${projectList}`,
+        duration: 5000,
+      });
+    } else if (emailsSent > 0 && emailsFailed > 0) {
+      toast({
+        title: "Invitaciones parcialmente enviadas",
+        description: `Se enviaron ${emailsSent} de ${data.projects.length} invitaciones. Usuario registrado.`,
+        variant: "default",
+        duration: 5000,
+      });
+    } else {
+      toast({
+        title: "Usuario registrado",
+        description: `El usuario fue agregado pero hubo un error al enviar el correo. Por favor reenvíe la invitación.`,
+        variant: "destructive",
+        duration: 5000,
+      });
+    }
   };
 
   const updateCollaborator = async (id: string, data: Partial<Omit<ManualCollaborator, 'id' | 'createdAt' | 'type'>>) => {
