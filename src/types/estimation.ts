@@ -69,7 +69,6 @@ export interface Estimation {
   invoiceUrl?: string;
   estimationText: string;
   amount: number;
-  requires_approval?: boolean;
   history: ApprovalHistoryEntry[];
   // Inheritance signature fields
   resident_signed_by?: string | null;
