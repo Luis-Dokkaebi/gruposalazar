@@ -20,13 +20,13 @@ All colors MUST be HSL.
     --popover: 0 0% 100%;
     --popover-foreground: 216 65% 11%;
 
-    --primary: 40 48% 56%; /* Matte Gold */
+    --primary: 222 47% 11%; /* Slate 900 - Deep Blue */
     --primary-foreground: 0 0% 100%;
 
     --secondary: 210 15% 92%; /* Light Slate */
     --secondary-foreground: 216 65% 11%;
 
-    --muted: 210 15% 95%;
+    --muted: 210 40% 96.1%; /* Slate 50 */
     --muted-foreground: 215 15% 45%;
 
     --accent: 210 15% 92%;
@@ -45,7 +45,7 @@ All colors MUST be HSL.
     --input: 214 20% 88%;
     --ring: 40 48% 56%; /* Gold Ring */
 
-    --radius: 0.5rem; /* Reduced radius for a more "precise" feel */
+    --radius: 0.75rem; /* Corporate Clean radius (12px) */
 
     --sidebar-background: 215 30% 15%;
     --sidebar-foreground: 210 20% 98%;
@@ -74,7 +74,7 @@ All colors MUST be HSL.
     --popover: 216 50% 13%;
     --popover-foreground: 210 20% 98%;
 
-    --primary: 40 48% 56%; /* Matte Gold */
+    --primary: 217 91% 60%; /* Blue 500 - Vibrant Blue for Dark Mode */
     --primary-foreground: 0 0% 100%;
 
     --secondary: 215 25% 25%; /* Metallic Slate */
@@ -121,6 +121,28 @@ All colors MUST be HSL.
 
   h1, h2, h3, h4, h5, h6 {
     @apply tracking-tight font-display; /* Use Montserrat for headers */
+  }
+
+  ::selection {
+    background: hsl(var(--primary));
+    color: white;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-muted-foreground/30 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted-foreground/50;
   }
 }
 
