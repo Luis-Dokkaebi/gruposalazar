@@ -39,6 +39,7 @@ import { EstimationDetailModal } from "@/components/EstimationDetailModal";
 import { mapDbEstimationToFrontend } from "@/lib/estimationMapper";
 import type { Database } from "@/integrations/supabase/types";
 import { Estimation } from "@/types/estimation";
+import { PageHeader } from "@/components/PageHeader";
 
 type Contract = Database['public']['Tables']['contracts']['Row'];
 type CostCenter = Database['public']['Tables']['cost_centers']['Row'];
@@ -237,30 +238,29 @@ export default function Estimaciones() {
   }
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Mis Estimaciones</h1>
-          <p className="text-muted-foreground mt-2">
-            Gestiona y visualiza el estado de tus estimaciones
-          </p>
-        </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Mis Estimaciones"
+        subtitle="Gestiona y visualiza el estado de tus estimaciones"
+        breadcrumbs={[
+          { label: "Inicio", href: "/" },
+          { label: "Estimaciones" },
+        ]}
+        actions={
+          currentRole === "contratista" && (
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Nueva Estimación
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Nueva Estimación</DialogTitle>
+                </DialogHeader>
 
-        {/* STRICT ROLE LOGIC: Only Contractor can see the New Estimation Button */}
-        {currentRole === "contratista" && (
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Nueva Estimación
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>Nueva Estimación</DialogTitle>
-              </DialogHeader>
-
-              <form onSubmit={handleSubmit} className="space-y-6 mt-4">
+                <form onSubmit={handleSubmit} className="space-y-6 mt-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <Label htmlFor="contract">Contrato *</Label>
@@ -394,8 +394,9 @@ export default function Estimaciones() {
               </form>
             </DialogContent>
           </Dialog>
-        )}
-      </div>
+        )
+      }
+      />
 
       <div className="space-y-4">
         {/* Quick Filters */}

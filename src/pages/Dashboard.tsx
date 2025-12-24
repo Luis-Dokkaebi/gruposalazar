@@ -7,6 +7,7 @@ import { EmailModal } from "@/components/EmailModal";
 import { Button } from "@/components/ui/button";
 import { UserManagement } from "@/components/UserManagement";
 import { useNavigate } from "react-router-dom";
+import { PageHeader } from "@/components/PageHeader";
 
 export default function Dashboard() {
   const { currentRole, estimations, emailNotifications } = useEstimationStore();
@@ -88,13 +89,15 @@ export default function Dashboard() {
   ];
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight text-foreground">Dashboard</h1>
-        <p className="text-muted-foreground mt-2">
-          Bienvenido al sistema de gestión de estimaciones de obra
-        </p>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Dashboard"
+        subtitle="Bienvenido al sistema de gestión de estimaciones de obra"
+        breadcrumbs={[
+          { label: "Inicio", href: "/" },
+          { label: "Dashboard" },
+        ]}
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat) => (
