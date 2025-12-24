@@ -144,6 +144,7 @@ export type Database = {
           pdf_url: string | null
           project_id: string
           project_number: string
+          requires_approval: boolean | null
           resident_approved_at: string | null
           resident_signed_by: string | null
           status: Database["public"]["Enums"]["estimation_status"]
@@ -171,6 +172,7 @@ export type Database = {
           pdf_url?: string | null
           project_id: string
           project_number: string
+          requires_approval?: boolean | null
           resident_approved_at?: string | null
           resident_signed_by?: string | null
           status?: Database["public"]["Enums"]["estimation_status"]
@@ -198,6 +200,7 @@ export type Database = {
           pdf_url?: string | null
           project_id?: string
           project_number?: string
+          requires_approval?: boolean | null
           resident_approved_at?: string | null
           resident_signed_by?: string | null
           status?: Database["public"]["Enums"]["estimation_status"]
