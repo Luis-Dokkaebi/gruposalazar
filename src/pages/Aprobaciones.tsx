@@ -10,6 +10,7 @@ import { FileText, Eye, Loader2, AlertCircle } from "lucide-react";
 import { EstimationDetailModal } from "@/components/EstimationDetailModal";
 import { mapDbEstimationToFrontend } from "@/lib/estimationMapper";
 import { Estimation, UserRole } from "@/types/estimation";
+import { PageHeader } from "@/components/PageHeader";
 
 const statusConfig: Record<string, { label: string; variant: string; badge: string }> = {
   registered: { label: "Pendiente Residente", variant: "warning", badge: "bg-amber-100 text-amber-700" },
@@ -65,13 +66,15 @@ export default function Aprobaciones() {
 
   if (!currentProjectId) {
     return (
-      <div className="space-y-8">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">Bandeja de Aprobaciones</h1>
-          <p className="text-muted-foreground mt-2">
-            Gestiona las estimaciones pendientes según tu rol actual
-          </p>
-        </div>
+      <div className="space-y-6">
+        <PageHeader
+          title="Bandeja de Aprobaciones"
+          subtitle="Gestiona las estimaciones pendientes según tu rol actual"
+          breadcrumbs={[
+            { label: "Inicio", href: "/" },
+            { label: "Aprobaciones" },
+          ]}
+        />
         <Card className="p-12 text-center">
           <AlertCircle className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
           <p className="text-muted-foreground">Selecciona un proyecto para ver las aprobaciones pendientes</p>
@@ -81,13 +84,15 @@ export default function Aprobaciones() {
   }
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight text-foreground">Bandeja de Aprobaciones</h1>
-        <p className="text-muted-foreground mt-2">
-          Gestiona las estimaciones pendientes según tu rol actual
-        </p>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Bandeja de Aprobaciones"
+        subtitle="Gestiona las estimaciones pendientes según tu rol actual"
+        breadcrumbs={[
+          { label: "Inicio", href: "/" },
+          { label: "Aprobaciones" },
+        ]}
+      />
 
       {loading ? (
         <Card className="p-12 text-center">

@@ -2,6 +2,7 @@ import { useEstimationStore } from "@/lib/estimationStore";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Building2 } from "lucide-react";
+import { PageHeader } from "@/components/PageHeader";
 
 const statusColors = {
   inicio: { 
@@ -36,13 +37,15 @@ export default function CentrosCostos() {
   };
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold text-foreground">Centros de Costos</h1>
-        <p className="text-muted-foreground mt-2">
-          Gestión de proyectos y centros de costos activos
-        </p>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Centros de Costos"
+        subtitle="Gestión de proyectos y centros de costos activos"
+        breadcrumbs={[
+          { label: "Inicio", href: "/" },
+          { label: "Centros de Costos" },
+        ]}
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {costCenters.map((center) => {

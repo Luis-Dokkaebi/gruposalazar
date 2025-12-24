@@ -21,6 +21,7 @@ import SupportDashboard from "./pages/SupportDashboard";
 import { SupportRoute } from "./components/SupportRoute";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
+import TestHeader from "./pages/TestHeader";
 
 const queryClient = new QueryClient();
 
@@ -76,6 +77,7 @@ const AppRoutes = () => (
     {/* Public routes */}
     <Route path="/auth" element={<Auth />} />
     <Route path="/invite" element={<AcceptInvitation />} />
+    <Route path="/test-header" element={<TestHeader />} />
     
     {/* Protected routes with main layout */}
     <Route

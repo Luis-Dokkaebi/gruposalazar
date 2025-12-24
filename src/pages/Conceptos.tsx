@@ -1,6 +1,7 @@
 import { useEstimationStore } from "@/lib/estimationStore";
 import { Card } from "@/components/ui/card";
 import { BookOpen } from "lucide-react";
+import { PageHeader } from "@/components/PageHeader";
 import {
   Table,
   TableBody,
@@ -14,13 +15,15 @@ export default function Conceptos() {
   const { contracts } = useEstimationStore();
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold text-foreground">Catálogo de Conceptos</h1>
-        <p className="text-muted-foreground mt-2">
-          Conceptos de costos unitarios por contrato
-        </p>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Catálogo de Conceptos"
+        subtitle="Conceptos de costos unitarios por contrato"
+        breadcrumbs={[
+          { label: "Inicio", href: "/" },
+          { label: "Conceptos" },
+        ]}
+      />
 
       <div className="space-y-6">
         {contracts.map((contract) => (
