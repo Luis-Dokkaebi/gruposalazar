@@ -14,11 +14,13 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { CheckCircle2, Upload, FileText, Loader2 } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CheckCircle2, Upload, FileText, Loader2, Settings2 } from "lucide-react";
 import { toast } from "sonner";
 import { ApprovalTimeline } from "./ApprovalTimeline";
 import { ApprovalSummary } from "./ApprovalSummary";
 import { NotificationManager } from "./NotificationManager";
+import { EstimationRolesConfig } from "./dashboard/EstimationRolesConfig";
 import type { Database } from "@/integrations/supabase/types";
 
 type AppRole = Database['public']['Enums']['app_role'];
@@ -63,6 +65,7 @@ export function EstimationDetailModal({ estimation, onClose, projectId, onRefres
   
   const [invoiceFile, setInvoiceFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [activeTab, setActiveTab] = useState("details");
 
   const costCenter = costCenters.find(cc => cc.id === estimation.costCenterId);
   const contract = contracts.find(c => c.id === estimation.contractId);
@@ -284,114 +287,141 @@ export function EstimationDetailModal({ estimation, onClose, projectId, onRefres
     }).format(amount);
   };
 
+  const showConfigTab = currentRole === 'soporte_tecnico';
+
   return (
     <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto flex flex-col">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold">Detalle de Estimación</DialogTitle>
         </DialogHeader>
 
-        <div className="relative">
-          {/* Watermark */}
-          <div className={`absolute inset-0 flex items-center justify-center pointer-events-none z-10 ${watermark.bgColor}`}>
-            <div
-              className={`${watermark.color} font-black text-7xl transform -rotate-45 select-none`}
-              style={{ letterSpacing: '0.1em' }}
-            >
-              {watermark.text}
-            </div>
-          </div>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1">
+           {showConfigTab && (
+            <TabsList className="mb-4">
+              <TabsTrigger value="details">Detalles</TabsTrigger>
+              <TabsTrigger value="config" className="flex items-center gap-2">
+                <Settings2 className="h-4 w-4" />
+                Configuración
+              </TabsTrigger>
+            </TabsList>
+           )}
 
-          {/* Content */}
-          <div className="relative z-20 space-y-6">
-            {/* Header Info */}
-            <div className="grid grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg">
-              <div>
-                <p className="text-sm text-muted-foreground">Folio</p>
-                <p className="font-bold text-lg">{estimation.folio}</p>
+          <TabsContent value="details">
+            <div className="relative">
+              {/* Watermark */}
+              <div className={`absolute inset-0 flex items-center justify-center pointer-events-none z-10 ${watermark.bgColor}`}>
+                <div
+                  className={`${watermark.color} font-black text-7xl transform -rotate-45 select-none`}
+                  style={{ letterSpacing: '0.1em' }}
+                >
+                  {watermark.text}
+                </div>
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Proyecto</p>
-                <p className="font-bold text-lg">{estimation.projectNumber}</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Centro de Costos</p>
-                <p className="font-semibold">{costCenter?.name || 'N/A'}</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Contrato</p>
-                <p className="font-semibold">{contract?.name || 'N/A'}</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Contratista</p>
-                <p className="font-semibold">{estimation.contractorName}</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Monto</p>
-                <p className="font-bold text-lg text-primary">{formatCurrency(estimation.amount)}</p>
-              </div>
-            </div>
 
-            {/* Timeline Progress */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-lg">Progreso del Flujo</h3>
-                <Badge variant="outline" className="text-sm">
-                  Paso {currentStepIndex + 1} de {statusSteps.length}
-                </Badge>
-              </div>
-              
-              <Progress value={progressPercentage} className="h-3" />
-              
-              <div className="grid grid-cols-4 md:grid-cols-8 gap-2">
-                {statusSteps.map((step, index) => {
-                  const isCompleted = index <= currentStepIndex;
-                  const isCurrent = index === currentStepIndex;
+              {/* Content */}
+              <div className="relative z-20 space-y-6">
+                {/* Header Info */}
+                <div className="grid grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Folio</p>
+                    <p className="font-bold text-lg">{estimation.folio}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Proyecto</p>
+                    <p className="font-bold text-lg">{estimation.projectNumber}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Centro de Costos</p>
+                    <p className="font-semibold">{costCenter?.name || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Contrato</p>
+                    <p className="font-semibold">{contract?.name || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Contratista</p>
+                    <p className="font-semibold">{estimation.contractorName}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Monto</p>
+                    <p className="font-bold text-lg text-primary">{formatCurrency(estimation.amount)}</p>
+                  </div>
+                </div>
+
+                {/* Timeline Progress */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-semibold text-lg">Progreso del Flujo</h3>
+                    <Badge variant="outline" className="text-sm">
+                      Paso {currentStepIndex + 1} de {statusSteps.length}
+                    </Badge>
+                  </div>
                   
-                  return (
-                    <div
-                      key={step.key}
-                      className={`text-center p-2 rounded-lg border-2 transition-all ${
-                        isCompleted
-                          ? 'border-primary bg-primary/10'
-                          : 'border-border bg-muted/30'
-                      } ${isCurrent ? 'ring-2 ring-primary ring-offset-2' : ''}`}
-                    >
-                      <div className="text-xs font-semibold mb-1">Paso {step.step}</div>
-                      <div className="text-xs text-muted-foreground">{step.label}</div>
-                      {isCompleted && (
-                        <CheckCircle2 className="h-4 w-4 mx-auto mt-1 text-primary" />
-                      )}
-                    </div>
-                  );
-                })}
+                  <Progress value={progressPercentage} className="h-3" />
+
+                  <div className="grid grid-cols-4 md:grid-cols-8 gap-2">
+                    {statusSteps.map((step, index) => {
+                      const isCompleted = index <= currentStepIndex;
+                      const isCurrent = index === currentStepIndex;
+
+                      return (
+                        <div
+                          key={step.key}
+                          className={`text-center p-2 rounded-lg border-2 transition-all ${
+                            isCompleted
+                              ? 'border-primary bg-primary/10'
+                              : 'border-border bg-muted/30'
+                          } ${isCurrent ? 'ring-2 ring-primary ring-offset-2' : ''}`}
+                        >
+                          <div className="text-xs font-semibold mb-1">Paso {step.step}</div>
+                          <div className="text-xs text-muted-foreground">{step.label}</div>
+                          {isCompleted && (
+                            <CheckCircle2 className="h-4 w-4 mx-auto mt-1 text-primary" />
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Description */}
+                <div className="p-4 bg-muted/50 rounded-lg">
+                  <h4 className="font-semibold mb-2 flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    Descripción
+                  </h4>
+                  <p className="text-sm text-muted-foreground">{estimation.estimationText}</p>
+                </div>
+
+                {/* Action Button */}
+                {getActionButton()}
+
+                {/* Approval Summary - Shows who signed for whom */}
+                <ApprovalSummary estimation={estimation} />
+
+                {/* Approval Timeline */}
+                <ApprovalTimeline history={estimation.history} />
+
+                {/* Notification Manager for Support */}
+                {currentRole === 'soporte_tecnico' && estimation.id && (
+                  <NotificationManager estimationId={estimation.id} />
+                )}
               </div>
             </div>
+          </TabsContent>
 
-            {/* Description */}
-            <div className="p-4 bg-muted/50 rounded-lg">
-              <h4 className="font-semibold mb-2 flex items-center gap-2">
-                <FileText className="h-4 w-4" />
-                Descripción
-              </h4>
-              <p className="text-sm text-muted-foreground">{estimation.estimationText}</p>
-            </div>
-
-            {/* Action Button */}
-            {getActionButton()}
-            
-            {/* Approval Summary - Shows who signed for whom */}
-            <ApprovalSummary estimation={estimation} />
-            
-            {/* Approval Timeline */}
-            <ApprovalTimeline history={estimation.history} />
-
-            {/* Notification Manager for Support */}
-            {currentRole === 'soporte_tecnico' && estimation.id && (
-              <NotificationManager estimationId={estimation.id} />
-            )}
-          </div>
-        </div>
+          {showConfigTab && (
+            <TabsContent value="config">
+              <EstimationRolesConfig
+                estimationId={estimation.id}
+                folio={estimation.folio}
+                onUpdate={onRefresh}
+                onClose={() => setActiveTab("details")}
+              />
+            </TabsContent>
+          )}
+        </Tabs>
       </DialogContent>
     </Dialog>
   );

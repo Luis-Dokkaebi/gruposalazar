@@ -79,6 +79,10 @@ export interface Estimation {
   superintendent_approved_at?: string | null;
   leader_approved_at?: string | null;
   compras_approved_at?: string | null;
+  // Role configuration fields
+  is_resident_active: boolean;
+  is_superintendent_active: boolean;
+  is_leader_active: boolean;
 }
 
 export interface EmailNotification {
