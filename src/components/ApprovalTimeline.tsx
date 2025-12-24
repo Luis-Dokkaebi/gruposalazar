@@ -5,6 +5,7 @@ import { es } from "date-fns/locale";
 
 interface ApprovalTimelineProps {
   history: ApprovalHistoryEntry[];
+  requiresApproval: boolean;
 }
 
 const statusLabels: Record<string, string> = {
@@ -18,7 +19,17 @@ const statusLabels: Record<string, string> = {
   paid: "Pago Realizado"
 };
 
-export function ApprovalTimeline({ history }: ApprovalTimelineProps) {
+export function ApprovalTimeline({ history, requiresApproval }: ApprovalTimelineProps) {
+  if (!requiresApproval) {
+    return (
+      <div className="mt-6 pt-6 border-t border-border">
+        <div className="p-4 bg-muted/30 rounded-lg text-center text-muted-foreground">
+          Esta estimación no requiere flujo de aprobación.
+        </div>
+      </div>
+    );
+  }
+
   const calculateDelay = (current: ApprovalHistoryEntry, previous?: ApprovalHistoryEntry) => {
     if (!previous) return null;
     
