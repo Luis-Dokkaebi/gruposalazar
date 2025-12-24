@@ -58,7 +58,7 @@ function MainLayout({ children }: { children: React.ReactNode }) {
               </div>
               <RoleSelector />
             </header>
-            <main className="flex-1 p-6 md:p-8 overflow-auto bg-main-background">
+            <main className="flex-1 p-4 md:p-8 overflow-auto bg-main-background">
               <div className="max-w-7xl mx-auto">
                 {children}
               </div>
