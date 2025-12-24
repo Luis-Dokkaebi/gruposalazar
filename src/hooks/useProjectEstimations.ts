@@ -74,9 +74,10 @@ export function useProjectEstimations(projectId: string | null) {
     if (estError) throw estError;
 
     // Call the database function to get the next status (considers active roles)
+    // Note: get_next_approval_status now takes _estimation_id
     const { data: nextStatus, error: statusError } = await supabase
       .rpc('get_next_approval_status', {
-        _project_id: projectId,
+        _estimation_id: estimationId,
         _current_status: estimation.status
       });
 
@@ -111,14 +112,14 @@ export function useProjectEstimations(projectId: string | null) {
     }
 
     // Handle signature inheritance for skipped roles
-    // Get project role configuration
-    const { data: projectConfig } = await supabase
-      .from('projects')
+    // Get estimation role configuration (now stored on the estimation)
+    const { data: estConfig } = await supabase
+      .from('estimations')
       .select('is_resident_active, is_superintendent_active, is_leader_active')
-      .eq('id', projectId)
+      .eq('id', estimationId)
       .single();
 
-    if (projectConfig) {
+    if (estConfig) {
       // Calculate which roles should be auto-signed based on current status and next status
       const statusOrder = ['registered', 'auth_resident', 'auth_super', 'auth_leader', 'validated_compras'];
       const currentIdx = statusOrder.indexOf(estimation.status);
@@ -129,19 +130,19 @@ export function useProjectEstimations(projectId: string | null) {
         const skippedStatus = statusOrder[i];
         switch (skippedStatus) {
           case 'auth_resident':
-            if (!projectConfig.is_resident_active) {
+            if (!estConfig.is_resident_active) {
               updateData.resident_approved_at = now;
               updateData.resident_signed_by = userName;
             }
             break;
           case 'auth_super':
-            if (!projectConfig.is_superintendent_active) {
+            if (!estConfig.is_superintendent_active) {
               updateData.superintendent_approved_at = now;
               updateData.superintendent_signed_by = userName;
             }
             break;
           case 'auth_leader':
-            if (!projectConfig.is_leader_active) {
+            if (!estConfig.is_leader_active) {
               updateData.leader_approved_at = now;
               updateData.leader_signed_by = userName;
             }
@@ -217,21 +218,32 @@ export function useProjectEstimations(projectId: string | null) {
   }) => {
     if (!user || !projectId) throw new Error('No authenticated user or project');
 
-    // Get the initial status based on project roles
-    const { data: initialStatus, error: statusError } = await supabase
-      .rpc('get_next_approval_status', {
-        _project_id: projectId,
-        _current_status: 'registered' as EstimationStatus
-      });
+    // Get default configuration from project
+    const { data: projectConfig } = await supabase
+      .from('projects')
+      .select('is_resident_active, is_superintendent_active, is_leader_active')
+      .eq('id', projectId)
+      .single();
 
-    // Insert with 'registered' status, then update based on cascade logic
+    // Default to true if not found
+    const defaults = {
+        is_resident_active: true,
+        is_superintendent_active: true,
+        is_leader_active: true,
+        ...projectConfig
+    };
+
+    // Insert with 'registered' status and project defaults
     const { data: estimation, error: insertError } = await supabase
       .from('estimations')
       .insert({
         ...data,
         project_id: projectId,
         created_by: user.id,
-        status: 'registered' as EstimationStatus
+        status: 'registered' as EstimationStatus,
+        is_resident_active: defaults.is_resident_active,
+        is_superintendent_active: defaults.is_superintendent_active,
+        is_leader_active: defaults.is_leader_active
       })
       .select()
       .single();
