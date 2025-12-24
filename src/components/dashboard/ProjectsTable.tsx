@@ -185,7 +185,70 @@ export function ProjectsTable({ projects, loading }: ProjectsTableProps) {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="rounded-md border">
+          {/* Mobile View: Stacked Cards */}
+          <div className="md:hidden space-y-4">
+            {filteredProjects.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                No se encontraron proyectos.
+              </div>
+            ) : (
+              filteredProjects.map((project) => (
+                <Card key={project.id} className="overflow-hidden border shadow-sm">
+                  <div className="p-4 space-y-3">
+                    <div className="flex items-start justify-between">
+                      <div className="space-y-1">
+                        <h3 className="font-semibold leading-none tracking-tight">{project.name}</h3>
+                        <p className="text-sm text-muted-foreground">
+                          {project.leader?.full_name || project.leader?.email || "Sin asignar"}
+                        </p>
+                      </div>
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          "border transition-colors shrink-0",
+                          project.status === "Active" && "bg-emerald-100 text-emerald-800 border-emerald-200",
+                          project.status === "New" && "bg-yellow-100 text-yellow-800 border-yellow-200",
+                          project.status === "Finished" && "bg-slate-100 text-slate-800 border-slate-200"
+                        )}
+                      >
+                        {project.status === "Active" ? "Activo" :
+                         project.status === "Finished" ? "Finalizado" : "Nuevo"}
+                      </Badge>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-sm pt-2 border-t">
+                      <div>
+                        <span className="text-muted-foreground block text-xs">Monto Total</span>
+                        <span className="font-medium">{formatCurrency(project.totalEstimationAmount)}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground block text-xs">Est. Activas</span>
+                        <span className="font-medium">{project.activeEstimationsCount}</span>
+                      </div>
+                    </div>
+
+                    <div className="pt-2 flex justify-end">
+                       <Button
+                          variant="ghost"
+                          size="sm"
+                          className="w-full justify-center border hover:bg-muted"
+                          onClick={() => {
+                            setSelectedProject(project);
+                            setDetailOpen(true);
+                          }}
+                        >
+                          <Eye className="h-4 w-4 mr-2" />
+                          Ver Detalles
+                        </Button>
+                    </div>
+                  </div>
+                </Card>
+              ))
+            )}
+          </div>
+
+          {/* Desktop View: Table */}
+          <div className="hidden md:block rounded-md border">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -247,7 +310,7 @@ export function ProjectsTable({ projects, loading }: ProjectsTableProps) {
               </TableBody>
             </Table>
           </div>
-          <div className="mt-4 text-sm text-muted-foreground">
+          <div className="mt-4 text-sm text-muted-foreground text-center md:text-left">
               Mostrando {filteredProjects.length} de {projects.length} proyectos
           </div>
         </CardContent>
