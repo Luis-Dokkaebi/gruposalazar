@@ -16,7 +16,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CheckCircle2, Upload, FileText, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { Switch } from "@/components/ui/switch";
 import { ApprovalTimeline } from "./ApprovalTimeline";
 import { ApprovalSummary } from "./ApprovalSummary";
 import { NotificationManager } from "./NotificationManager";
@@ -383,26 +382,9 @@ export function EstimationDetailModal({ estimation, onClose, projectId, onRefres
             
             {/* Approval Summary - Shows who signed for whom */}
             <ApprovalSummary estimation={estimation} />
-
-            <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/50">
-              <div className="space-y-0.5">
-                <Label htmlFor="approval-required-detail">¿Requiere Aprobación?</Label>
-                <p className="text-sm text-muted-foreground">
-                  Estado del flujo de firmas para esta estimación.
-                </p>
-              </div>
-              <Switch
-                id="approval-required-detail"
-                checked={estimation.requires_approval ?? false}
-                disabled={true} // Read-only in detail view for now unless we implement update logic
-              />
-            </div>
             
             {/* Approval Timeline */}
-            <ApprovalTimeline
-              history={estimation.history}
-              requiresApproval={estimation.requires_approval ?? false}
-            />
+            <ApprovalTimeline history={estimation.history} />
 
             {/* Notification Manager for Support */}
             {currentRole === 'soporte_tecnico' && estimation.id && (

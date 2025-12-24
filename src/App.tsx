@@ -19,7 +19,6 @@ import Auth from "./pages/Auth";
 import AcceptInvitation from "./pages/AcceptInvitation";
 import SupportDashboard from "./pages/SupportDashboard";
 import { SupportRoute } from "./components/SupportRoute";
-import VerifyUI from "./pages/VerifyUI";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 
@@ -74,7 +73,6 @@ function MainLayout({ children }: { children: React.ReactNode }) {
 
 const AppRoutes = () => (
   <Routes>
-    <Route path="/verify-ui" element={<VerifyUI />} />
     {/* Public routes */}
     <Route path="/auth" element={<Auth />} />
     <Route path="/invite" element={<AcceptInvitation />} />
