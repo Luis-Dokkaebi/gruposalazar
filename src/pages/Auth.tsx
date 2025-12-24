@@ -98,54 +98,54 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <Card className="w-full max-w-md shadow-xl glass">
+    <div className="min-h-screen bg-gradient-to-br from-blue-900 to-slate-900 flex items-center justify-center p-4">
+      <Card className="w-full max-w-md bg-white/10 backdrop-blur-md border-white/20 shadow-2xl">
         <CardHeader className="text-center space-y-4">
-          <div className="mx-auto w-16 h-16 bg-primary rounded-xl flex items-center justify-center">
-            <Building2 className="w-8 h-8 text-primary-foreground" />
+          <div className="mx-auto w-16 h-16 bg-white/20 rounded-xl flex items-center justify-center">
+            <Building2 className="w-8 h-8 text-white" />
           </div>
           <div>
-            <CardTitle className="text-2xl font-bold">Grupo Salazar</CardTitle>
-            <CardDescription>Sistema de Control de Estimaciones</CardDescription>
+            <CardTitle className="text-3xl font-bold text-white tracking-tight">Grupo Salazar</CardTitle>
+            <CardDescription className="text-blue-100">Sistema de Control de Estimaciones</CardDescription>
           </div>
         </CardHeader>
         
         <CardContent>
           <Tabs defaultValue="login" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-6">
-              <TabsTrigger value="login">Iniciar Sesión</TabsTrigger>
-              <TabsTrigger value="signup">Registrarse</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-2 mb-6 bg-black/20 text-gray-400">
+              <TabsTrigger value="login" className="data-[state=active]:bg-white/20 data-[state=active]:text-white">Iniciar Sesión</TabsTrigger>
+              <TabsTrigger value="signup" className="data-[state=active]:bg-white/20 data-[state=active]:text-white">Registrarse</TabsTrigger>
             </TabsList>
             
             <TabsContent value="login">
               <form onSubmit={handleLogin} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="login-email">Email</Label>
+                  <Label htmlFor="login-email" className="text-white">Email</Label>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Mail className="absolute left-3 top-3 h-4 w-4 text-white/70" />
                     <Input
                       id="login-email"
                       type="email"
                       placeholder="tu@email.com"
                       value={loginEmail}
                       onChange={(e) => setLoginEmail(e.target.value)}
-                      className="pl-10"
+                      className="pl-10 bg-black/20 border-white/10 text-white placeholder:text-gray-400 focus-visible:ring-white/50 focus-visible:border-white/50"
                       required
                     />
                   </div>
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="login-password">Contraseña</Label>
+                  <Label htmlFor="login-password" className="text-white">Contraseña</Label>
                   <div className="relative">
-                    <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Lock className="absolute left-3 top-3 h-4 w-4 text-white/70" />
                     <Input
                       id="login-password"
                       type="password"
                       placeholder="••••••••"
                       value={loginPassword}
                       onChange={(e) => setLoginPassword(e.target.value)}
-                      className="pl-10"
+                      className="pl-10 bg-black/20 border-white/10 text-white placeholder:text-gray-400 focus-visible:ring-white/50 focus-visible:border-white/50"
                       required
                     />
                   </div>
@@ -160,48 +160,48 @@ export default function Auth() {
             <TabsContent value="signup">
               <form onSubmit={handleSignup} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="signup-name">Nombre completo</Label>
+                  <Label htmlFor="signup-name" className="text-white">Nombre completo</Label>
                   <div className="relative">
-                    <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <User className="absolute left-3 top-3 h-4 w-4 text-white/70" />
                     <Input
                       id="signup-name"
                       type="text"
                       placeholder="Juan Pérez"
                       value={signupName}
                       onChange={(e) => setSignupName(e.target.value)}
-                      className="pl-10"
+                      className="pl-10 bg-black/20 border-white/10 text-white placeholder:text-gray-400 focus-visible:ring-white/50 focus-visible:border-white/50"
                       required
                     />
                   </div>
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="signup-email">Email</Label>
+                  <Label htmlFor="signup-email" className="text-white">Email</Label>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Mail className="absolute left-3 top-3 h-4 w-4 text-white/70" />
                     <Input
                       id="signup-email"
                       type="email"
                       placeholder="tu@email.com"
                       value={signupEmail}
                       onChange={(e) => setSignupEmail(e.target.value)}
-                      className="pl-10"
+                      className="pl-10 bg-black/20 border-white/10 text-white placeholder:text-gray-400 focus-visible:ring-white/50 focus-visible:border-white/50"
                       required
                     />
                   </div>
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="signup-password">Contraseña</Label>
+                  <Label htmlFor="signup-password" className="text-white">Contraseña</Label>
                   <div className="relative">
-                    <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Lock className="absolute left-3 top-3 h-4 w-4 text-white/70" />
                     <Input
                       id="signup-password"
                       type="password"
                       placeholder="Mínimo 6 caracteres"
                       value={signupPassword}
                       onChange={(e) => setSignupPassword(e.target.value)}
-                      className="pl-10"
+                      className="pl-10 bg-black/20 border-white/10 text-white placeholder:text-gray-400 focus-visible:ring-white/50 focus-visible:border-white/50"
                       required
                     />
                   </div>
