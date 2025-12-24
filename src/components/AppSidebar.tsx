@@ -49,7 +49,7 @@ export function AppSidebar() {
   }
 
   return (
-    <Sidebar collapsible="icon" className="border-r border-sidebar-border" variant="sidebar">
+    <Sidebar collapsible="icon" variant="sidebar">
       <SidebarContent className="bg-sidebar">
         <div className="px-4 py-6">
           <h1 className={`font-bold text-sidebar-foreground transition-all ${collapsed ? "text-sm text-center" : "text-xl"}`}>
@@ -69,8 +69,7 @@ export function AppSidebar() {
                     <NavLink
                       to={item.url}
                       end
-                      className="hover:bg-white/5 transition-colors"
-                      activeClassName="bg-white/10 text-sidebar-primary font-medium border-l-4 border-sidebar-primary"
+                      activeClassName="bg-primary text-primary-foreground font-medium"
                     >
                       <item.icon className="h-4 w-4" />
                       {!collapsed && <span>{item.title}</span>}
