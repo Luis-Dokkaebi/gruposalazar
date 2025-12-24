@@ -88,6 +88,23 @@ export default function Dashboard() {
     },
   ];
 
+  const topStats = stats.slice(0, 3);
+  const sideStats = stats.slice(3);
+
+  const StatCard = ({ stat }: { stat: typeof stats[0] }) => (
+    <Card className={`p-6 border-l-4 ${stat.borderColor} ${stat.hoverBg} transition-colors bg-card rounded-xl h-full`}>
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm text-muted-foreground font-medium">{stat.title}</p>
+          <p className="text-3xl font-bold text-foreground mt-2">{stat.value}</p>
+        </div>
+        <div className={`p-3 rounded-xl ${stat.bgColor}`}>
+          <stat.icon className={`h-6 w-6 ${stat.color}`} />
+        </div>
+      </div>
+    </Card>
+  );
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -99,54 +116,85 @@ export default function Dashboard() {
         ]}
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((stat) => (
-          <Card key={stat.title} className={`p-6 border-l-4 ${stat.borderColor} ${stat.hoverBg} transition-colors bg-card rounded-xl`}>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground font-medium">{stat.title}</p>
-                <p className="text-3xl font-bold text-foreground mt-2">{stat.value}</p>
-              </div>
-              <div className={`p-3 rounded-xl ${stat.bgColor}`}>
-                <stat.icon className={`h-6 w-6 ${stat.color}`} />
-              </div>
-            </div>
-          </Card>
-        ))}
-      </div>
-
-      <div>
-        <h2 className="text-2xl font-bold text-foreground mb-4">Mis Estimaciones Recientes</h2>
-        {relevantEstimations.length === 0 ? (
-          <Card className="p-12 text-center border border-border rounded-xl bg-card">
-            <FileText className="h-12 w-12 text-muted-foreground/40 mx-auto mb-4" />
-            <p className="text-muted-foreground mb-6">No hay estimaciones pendientes</p>
-            <Button 
-              onClick={() => navigate('/estimaciones')}
-              className="bg-primary hover:bg-primary/90"
-            >
-              Crear nueva estimación
-            </Button>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {relevantEstimations.slice(0, 4).map((estimation) => (
-              <EstimationCard
-                key={estimation.id}
-                estimation={estimation}
-                onClick={currentRole === 'soporte_tecnico' ? () => navigate('/estimaciones') : undefined}
-              />
-            ))}
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+        {/* Metric Cards: Top 3 */}
+        {topStats.map((stat) => (
+          <div key={stat.title} className="col-span-12 md:col-span-4">
+            <StatCard stat={stat} />
           </div>
-        )}
+        ))}
+
+        {/* Main Table / Content Section */}
+        <div className="col-span-12 md:col-span-8 lg:col-span-9">
+           {currentRole === 'soporte_tecnico' ? (
+             <UserManagement />
+           ) : (
+             <div className="h-full">
+               <h2 className="text-2xl font-bold text-foreground mb-4">Mis Estimaciones Recientes</h2>
+               {relevantEstimations.length === 0 ? (
+                 <Card className="p-12 text-center border border-border rounded-xl bg-card h-full flex flex-col items-center justify-center">
+                   <FileText className="h-12 w-12 text-muted-foreground/40 mx-auto mb-4" />
+                   <p className="text-muted-foreground mb-6">No hay estimaciones pendientes</p>
+                   <Button
+                     onClick={() => navigate('/estimaciones')}
+                     className="bg-primary hover:bg-primary/90"
+                   >
+                     Crear nueva estimación
+                   </Button>
+                 </Card>
+               ) : (
+                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                   {relevantEstimations.slice(0, 4).map((estimation) => (
+                     <EstimationCard
+                       key={estimation.id}
+                       estimation={estimation}
+                       onClick={currentRole === 'soporte_tecnico' ? () => navigate('/estimaciones') : undefined}
+                     />
+                   ))}
+                 </div>
+               )}
+             </div>
+           )}
+        </div>
+
+        {/* Side Panel Section */}
+        <div className="col-span-12 md:col-span-4 lg:col-span-3 space-y-6">
+           {/* Remaining Metric Card(s) */}
+           {sideStats.map((stat) => (
+             <div key={stat.title} className="h-40 md:h-auto">
+               <StatCard stat={stat} />
+             </div>
+           ))}
+
+           {/* For Support: Mini list of Recent Estimations */}
+           {currentRole === 'soporte_tecnico' && (
+             <div className="space-y-4">
+                <h3 className="font-semibold text-lg">Recientes</h3>
+                <div className="flex flex-col gap-4">
+                  {relevantEstimations.slice(0, 3).map((estimation) => (
+                     <EstimationCard
+                       key={estimation.id}
+                       estimation={estimation}
+                       onClick={() => navigate('/estimaciones')}
+                     />
+                  ))}
+                </div>
+                <Button
+                   variant="outline"
+                   className="w-full"
+                   onClick={() => navigate('/estimaciones')}
+                >
+                  Ver todas
+                </Button>
+             </div>
+           )}
+        </div>
       </div>
 
       <EmailModal
         notification={selectedNotification}
         onClose={() => setSelectedNotification(null)}
       />
-
-      {currentRole === 'soporte_tecnico' && <UserManagement />}
     </div>
   );
 }
