@@ -88,7 +88,7 @@ export function UserManagement() {
   };
 
   return (
-    <Card className="mt-8 border-none shadow-sm bg-white/50 backdrop-blur-sm">
+    <Card className="h-full border-none shadow-sm bg-white/50 backdrop-blur-sm">
       <CardHeader className="flex flex-row items-center justify-between pb-6">
         <div className="space-y-1">
           <CardTitle className="text-xl font-semibold flex items-center gap-2">
