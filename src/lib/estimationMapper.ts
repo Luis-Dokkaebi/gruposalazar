@@ -12,6 +12,7 @@ interface DbEstimationWithHistory extends DbEstimation {
  * Maps a database estimation to the frontend Estimation type
  */
 export function mapDbEstimationToFrontend(dbEstimation: DbEstimationWithHistory): Estimation {
+  const est = dbEstimation as any;
   return {
     id: dbEstimation.id,
     folio: dbEstimation.folio,
@@ -33,14 +34,18 @@ export function mapDbEstimationToFrontend(dbEstimation: DbEstimationWithHistory)
     amount: Number(dbEstimation.amount),
     history: (dbEstimation.history || []).map(mapDbHistoryToFrontend),
     // Signature inheritance fields
-    resident_signed_by: (dbEstimation as any).resident_signed_by || null,
-    superintendent_signed_by: (dbEstimation as any).superintendent_signed_by || null,
-    leader_signed_by: (dbEstimation as any).leader_signed_by || null,
+    resident_signed_by: est.resident_signed_by || null,
+    superintendent_signed_by: est.superintendent_signed_by || null,
+    leader_signed_by: est.leader_signed_by || null,
     // Raw DB fields for ApprovalSummary
     resident_approved_at: dbEstimation.resident_approved_at,
     superintendent_approved_at: dbEstimation.superintendent_approved_at,
     leader_approved_at: dbEstimation.leader_approved_at,
     compras_approved_at: dbEstimation.compras_approved_at,
+    // Role configuration
+    is_resident_active: est.is_resident_active ?? true,
+    is_superintendent_active: est.is_superintendent_active ?? true,
+    is_leader_active: est.is_leader_active ?? true,
   };
 }
 

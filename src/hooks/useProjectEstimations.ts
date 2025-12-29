@@ -73,10 +73,9 @@ export function useProjectEstimations(projectId: string | null) {
 
     if (estError) throw estError;
 
-    // Call the database function to get the next status (considers active roles)
-    // Note: get_next_approval_status now takes _estimation_id
+    // Call the database function to get the next status (considers active roles on estimation)
     const { data: nextStatus, error: statusError } = await supabase
-      .rpc('get_next_approval_status', {
+      .rpc('get_next_approval_status_by_estimation', {
         _estimation_id: estimationId,
         _current_status: estimation.status
       });
@@ -115,11 +114,12 @@ export function useProjectEstimations(projectId: string | null) {
     // Get estimation role configuration (now stored on the estimation)
     const { data: estConfig } = await supabase
       .from('estimations')
-      .select('is_resident_active, is_superintendent_active, is_leader_active')
+      .select('*')
       .eq('id', estimationId)
       .single();
 
     if (estConfig) {
+      const est = estConfig as any;
       // Calculate which roles should be auto-signed based on current status and next status
       const statusOrder = ['registered', 'auth_resident', 'auth_super', 'auth_leader', 'validated_compras'];
       const currentIdx = statusOrder.indexOf(estimation.status);
@@ -130,19 +130,19 @@ export function useProjectEstimations(projectId: string | null) {
         const skippedStatus = statusOrder[i];
         switch (skippedStatus) {
           case 'auth_resident':
-            if (!estConfig.is_resident_active) {
+            if (!est.is_resident_active) {
               updateData.resident_approved_at = now;
               updateData.resident_signed_by = userName;
             }
             break;
           case 'auth_super':
-            if (!estConfig.is_superintendent_active) {
+            if (!est.is_superintendent_active) {
               updateData.superintendent_approved_at = now;
               updateData.superintendent_signed_by = userName;
             }
             break;
           case 'auth_leader':
-            if (!estConfig.is_leader_active) {
+            if (!est.is_leader_active) {
               updateData.leader_approved_at = now;
               updateData.leader_signed_by = userName;
             }
@@ -244,7 +244,7 @@ export function useProjectEstimations(projectId: string | null) {
         is_resident_active: defaults.is_resident_active,
         is_superintendent_active: defaults.is_superintendent_active,
         is_leader_active: defaults.is_leader_active
-      })
+      } as any)
       .select()
       .single();
 

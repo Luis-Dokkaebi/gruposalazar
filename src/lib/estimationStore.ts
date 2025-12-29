@@ -58,6 +58,9 @@ const mockEstimations: Estimation[] = [
     createdAt: new Date('2025-11-20T09:00:00'),
     estimationText: 'Estimación de prueba - Pendiente Residente',
     amount: 125000,
+    is_resident_active: true,
+    is_superintendent_active: true,
+    is_leader_active: true,
     history: [
       {
         status: 'registered',
@@ -80,6 +83,9 @@ const mockEstimations: Estimation[] = [
     residentApprovedAt: new Date('2025-11-21T14:30:00'),
     estimationText: 'Estimación de prueba - Pendiente Superintendente',
     amount: 85000,
+    is_resident_active: true,
+    is_superintendent_active: true,
+    is_leader_active: true,
     history: [
       {
         status: 'registered',
@@ -109,6 +115,9 @@ const mockEstimations: Estimation[] = [
     superintendentApprovedAt: new Date('2025-11-22T15:45:00'),
     estimationText: 'Estimación de prueba - Pendiente Líder de Proyecto',
     amount: 195000,
+    is_resident_active: true,
+    is_superintendent_active: true,
+    is_leader_active: true,
     history: [
       {
         status: 'registered',
@@ -145,6 +154,9 @@ const mockEstimations: Estimation[] = [
     leaderApprovedAt: new Date('2025-11-23T16:30:00'),
     estimationText: 'Estimación de prueba - Pendiente Compras (ESTE DEBE VER COMPRAS)',
     amount: 275000,
+    is_resident_active: true,
+    is_superintendent_active: true,
+    is_leader_active: true,
     history: [
       {
         status: 'registered',
@@ -192,6 +204,9 @@ export const useEstimationStore = create<EstimationStore>((set, get) => ({
       projectNumber: String(projectCounter),
       createdAt: now,
       status: 'registered',
+      is_resident_active: true,
+      is_superintendent_active: true,
+      is_leader_active: true,
       history: [
         {
           status: 'registered',

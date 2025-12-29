@@ -37,17 +37,18 @@ export function EstimationRolesConfig({ estimationId, folio, onClose, onUpdate }
     try {
       const { data, error } = await supabase
         .from("estimations")
-        .select("is_resident_active, is_superintendent_active, is_leader_active")
+        .select("*")
         .eq("id", estimationId)
         .single();
 
       if (error) throw error;
 
       if (data) {
+        const est = data as any;
         setConfig({
-          is_resident_active: data.is_resident_active ?? true,
-          is_superintendent_active: data.is_superintendent_active ?? true,
-          is_leader_active: data.is_leader_active ?? true,
+          is_resident_active: est.is_resident_active ?? true,
+          is_superintendent_active: est.is_superintendent_active ?? true,
+          is_leader_active: est.is_leader_active ?? true,
         });
       }
     } catch (err: any) {
@@ -60,13 +61,14 @@ export function EstimationRolesConfig({ estimationId, folio, onClose, onUpdate }
   const handleSave = async () => {
     setSaving(true);
     try {
+      // Use raw update since types may not be regenerated yet
       const { error } = await supabase
         .from("estimations")
         .update({
           is_resident_active: config.is_resident_active,
           is_superintendent_active: config.is_superintendent_active,
           is_leader_active: config.is_leader_active,
-        })
+        } as any)
         .eq("id", estimationId);
 
       if (error) throw error;
