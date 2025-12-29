@@ -61,7 +61,16 @@ export function EstimationRolesConfig({ estimationId, folio, onClose, onUpdate }
   const handleSave = async () => {
     setSaving(true);
     try {
-      // Use raw update since types may not be regenerated yet
+      // First, get the current estimation data
+      const { data: currentEst, error: fetchErr } = await supabase
+        .from("estimations")
+        .select("status")
+        .eq("id", estimationId)
+        .single();
+
+      if (fetchErr) throw fetchErr;
+
+      // Update the role configuration
       const { error } = await supabase
         .from("estimations")
         .update({
@@ -72,6 +81,68 @@ export function EstimationRolesConfig({ estimationId, folio, onClose, onUpdate }
         .eq("id", estimationId);
 
       if (error) throw error;
+
+      // Now recalculate the next status based on the new configuration
+      // Use the DB function to get the correct next status
+      const { data: nextStatus, error: statusError } = await supabase
+        .rpc('get_next_approval_status_by_estimation', {
+          _estimation_id: estimationId,
+          _current_status: currentEst.status
+        });
+
+      if (statusError) throw statusError;
+
+      // If the next status is different from current, and the current status
+      // is one that can be auto-advanced, update it
+      const autoAdvanceStatuses = ['registered', 'auth_resident', 'auth_super', 'auth_leader'];
+      
+      if (nextStatus && nextStatus !== currentEst.status && autoAdvanceStatuses.includes(currentEst.status)) {
+        // Check if we need to skip the current approval step
+        const shouldAdvance = 
+          (currentEst.status === 'registered' && !config.is_resident_active) ||
+          (currentEst.status === 'auth_resident' && !config.is_superintendent_active) ||
+          (currentEst.status === 'auth_super' && !config.is_leader_active);
+
+        if (shouldAdvance) {
+          // Calculate the correct target status based on active roles
+          let targetStatus = currentEst.status;
+          
+          if (currentEst.status === 'registered') {
+            if (config.is_resident_active) {
+              targetStatus = 'auth_resident';
+            } else if (config.is_superintendent_active) {
+              targetStatus = 'auth_super';
+            } else if (config.is_leader_active) {
+              targetStatus = 'auth_leader';
+            } else {
+              targetStatus = 'validated_compras';
+            }
+          } else if (currentEst.status === 'auth_resident') {
+            if (config.is_superintendent_active) {
+              targetStatus = 'auth_super';
+            } else if (config.is_leader_active) {
+              targetStatus = 'auth_leader';
+            } else {
+              targetStatus = 'validated_compras';
+            }
+          } else if (currentEst.status === 'auth_super') {
+            if (config.is_leader_active) {
+              targetStatus = 'auth_leader';
+            } else {
+              targetStatus = 'validated_compras';
+            }
+          }
+
+          if (targetStatus !== currentEst.status) {
+            const { error: advanceError } = await supabase
+              .from("estimations")
+              .update({ status: targetStatus } as any)
+              .eq("id", estimationId);
+
+            if (advanceError) throw advanceError;
+          }
+        }
+      }
 
       toast.success("Configuración de flujo actualizada correctamente");
       onUpdate?.();
