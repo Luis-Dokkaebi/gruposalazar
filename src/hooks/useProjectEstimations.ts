@@ -233,14 +233,27 @@ export function useProjectEstimations(projectId: string | null) {
         ...projectConfig
     };
 
-    // Insert with 'registered' status and project defaults
+    // Calculate initial status based on active roles
+    // If a role is inactive, skip to the next active one
+    let initialStatus: EstimationStatus = 'registered';
+    if (!defaults.is_resident_active) {
+      if (defaults.is_superintendent_active) {
+        initialStatus = 'auth_resident';
+      } else if (defaults.is_leader_active) {
+        initialStatus = 'auth_super';
+      } else {
+        initialStatus = 'auth_leader';
+      }
+    }
+
+    // Insert with calculated initial status and project defaults
     const { data: estimation, error: insertError } = await supabase
       .from('estimations')
       .insert({
         ...data,
         project_id: projectId,
         created_by: user.id,
-        status: 'registered' as EstimationStatus,
+        status: initialStatus,
         is_resident_active: defaults.is_resident_active,
         is_superintendent_active: defaults.is_superintendent_active,
         is_leader_active: defaults.is_leader_active
@@ -253,7 +266,7 @@ export function useProjectEstimations(projectId: string | null) {
     // Add initial history entry
     await supabase.from('approval_history').insert({
       estimation_id: estimation.id,
-      status: 'registered' as EstimationStatus,
+      status: initialStatus,
       role: 'contratista' as AppRole,
       user_id: user.id,
       user_name: 'Contratista'
