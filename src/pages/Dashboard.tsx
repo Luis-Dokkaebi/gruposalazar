@@ -148,7 +148,7 @@ export default function Dashboard() {
                      <EstimationCard
                        key={estimation.id}
                        estimation={estimation}
-                       onClick={currentRole === 'soporte_tecnico' ? () => navigate('/estimaciones') : undefined}
+                       onClick={(currentRole as string) === 'soporte_tecnico' ? () => navigate('/estimaciones') : undefined}
                      />
                    ))}
                  </div>

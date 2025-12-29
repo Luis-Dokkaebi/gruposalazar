@@ -138,6 +138,9 @@ export type Database = {
           id: string
           invoice_uploaded_at: string | null
           invoice_url: string | null
+          is_leader_active: boolean
+          is_resident_active: boolean
+          is_superintendent_active: boolean
           leader_approved_at: string | null
           leader_signed_by: string | null
           paid_at: string | null
@@ -165,6 +168,9 @@ export type Database = {
           id?: string
           invoice_uploaded_at?: string | null
           invoice_url?: string | null
+          is_leader_active?: boolean
+          is_resident_active?: boolean
+          is_superintendent_active?: boolean
           leader_approved_at?: string | null
           leader_signed_by?: string | null
           paid_at?: string | null
@@ -192,6 +198,9 @@ export type Database = {
           id?: string
           invoice_uploaded_at?: string | null
           invoice_url?: string | null
+          is_leader_active?: boolean
+          is_resident_active?: boolean
+          is_superintendent_active?: boolean
           leader_approved_at?: string | null
           leader_signed_by?: string | null
           paid_at?: string | null
@@ -423,6 +432,13 @@ export type Database = {
         Args: {
           _current_status: Database["public"]["Enums"]["estimation_status"]
           _project_id: string
+        }
+        Returns: Database["public"]["Enums"]["estimation_status"]
+      }
+      get_next_approval_status_by_estimation: {
+        Args: {
+          _current_status: Database["public"]["Enums"]["estimation_status"]
+          _estimation_id: string
         }
         Returns: Database["public"]["Enums"]["estimation_status"]
       }
