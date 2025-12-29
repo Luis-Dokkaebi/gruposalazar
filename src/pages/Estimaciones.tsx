@@ -67,7 +67,6 @@ export default function Estimaciones() {
     estimationText: "",
     amount: "",
     pdfFile: null as File | null,
-    classification: "",
   });
 
   // Fetch contracts and cost centers for the current project
@@ -107,11 +106,9 @@ export default function Estimaciones() {
     return true;
   });
 
-  const uploadFile = async (file: File, classification: string) => {
+  const uploadFile = async (file: File) => {
     const fileExt = file.name.split('.').pop();
-    // Sanitized classification for filename
-    const tag = classification.replace(/\s+/g, '_').toUpperCase();
-    const fileName = `${tag}_${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
+    const fileName = `EST_${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
     const filePath = `${fileName}`;
 
     const { error: uploadError, data } = await supabase.storage
@@ -138,8 +135,8 @@ export default function Estimaciones() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.contractId || !formData.costCenterId || !formData.contractorName || !formData.estimationText || !formData.amount || !formData.classification) {
-      toast.error("Por favor completa todos los campos requeridos, incluyendo la clasificación.");
+    if (!formData.contractId || !formData.costCenterId || !formData.contractorName || !formData.estimationText || !formData.amount) {
+      toast.error("Por favor completa todos los campos requeridos.");
       return;
     }
 
@@ -157,7 +154,7 @@ export default function Estimaciones() {
 
     try {
       // 1. Upload File
-      const publicUrl = await uploadFile(formData.pdfFile, formData.classification);
+      const publicUrl = await uploadFile(formData.pdfFile);
 
       // 2. Generate folio and project number
       const folio = `EST-${Date.now().toString(36).toUpperCase()}`;
@@ -186,7 +183,6 @@ export default function Estimaciones() {
         estimationText: "",
         amount: "",
         pdfFile: null,
-        classification: "",
       });
     } catch (err: any) {
       console.error(err);
@@ -325,43 +321,22 @@ export default function Estimaciones() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="classification">Clasificación de Documento *</Label>
-                    <Select
-                      value={formData.classification}
-                      onValueChange={(value) => setFormData({ ...formData, classification: value })}
-                    >
-                      <SelectTrigger id="classification" className="bg-background">
-                        <SelectValue placeholder="Selecciona a quién corresponde" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-popover">
-                        <SelectItem value="Para Residente">Para Residente</SelectItem>
-                        <SelectItem value="Para Superintendente">Para Superintendente</SelectItem>
-                        <SelectItem value="Para Líder de Proyecto">Para Líder de Proyecto</SelectItem>
-                        <SelectItem value="Generador de Obra">Generador de Obra</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground">Etiqueta requerida para el filtrado de evidencias.</p>
+                <div className="space-y-2">
+                  <Label htmlFor="pdf">Carga de Evidencia (PDF/Imagen) *</Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id="pdf"
+                      type="file"
+                      accept=".pdf,image/*"
+                      onChange={handleFileChange}
+                      className="bg-background"
+                    />
                   </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="pdf">Carga de Evidencia (PDF/Imagen) *</Label>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        id="pdf"
-                        type="file"
-                        accept=".pdf,image/*"
-                        onChange={handleFileChange}
-                        className="bg-background"
-                      />
-                    </div>
-                    {formData.pdfFile && (
-                      <p className="text-sm text-green-600 mt-1">
-                        Archivo: {formData.pdfFile.name}
-                      </p>
-                    )}
-                  </div>
+                  {formData.pdfFile && (
+                    <p className="text-sm text-green-600 mt-1">
+                      Archivo: {formData.pdfFile.name}
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
