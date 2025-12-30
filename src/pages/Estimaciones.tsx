@@ -109,9 +109,9 @@ export default function Estimaciones() {
   const uploadFile = async (file: File) => {
     const fileExt = file.name.split('.').pop();
     const fileName = `EST_${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
-    const filePath = `${fileName}`;
+    const filePath = fileName;
 
-    const { error: uploadError, data } = await supabase.storage
+    const { error: uploadError } = await supabase.storage
       .from('estimations')
       .upload(filePath, file);
 
@@ -119,11 +119,8 @@ export default function Estimaciones() {
       throw uploadError;
     }
 
-    const { data: { publicUrl } } = supabase.storage
-      .from('estimations')
-      .getPublicUrl(filePath);
-
-    return publicUrl;
+    // Return file path (not public URL) - signed URLs will be generated on demand
+    return filePath;
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
