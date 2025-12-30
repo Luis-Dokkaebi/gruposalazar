@@ -1,7 +1,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
 const resendApiKey = Deno.env.get("RESEND_API_KEY");
+const supabaseUrl = Deno.env.get("SUPABASE_URL");
+const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
+
 const resend = new Resend(resendApiKey);
 
 const corsHeaders = {
@@ -28,16 +32,62 @@ const roleLabels: Record<string, string> = {
   soporte_tecnico: "Soporte Técnico",
 };
 
+// Verify authentication and return user ID
+const verifyAuth = async (req: Request): Promise<{ userId: string | null; error?: string }> => {
+  const authHeader = req.headers.get('authorization');
+  if (!authHeader) {
+    return { userId: null, error: 'Missing authorization header' };
+  }
+
+  const supabaseClient = createClient(supabaseUrl!, supabaseAnonKey!, {
+    global: { headers: { Authorization: authHeader } }
+  });
+
+  const { data: { user }, error } = await supabaseClient.auth.getUser();
+  if (error || !user) {
+    return { userId: null, error: 'Invalid or expired token' };
+  }
+
+  return { userId: user.id };
+};
+
 const handler = async (req: Request): Promise<Response> => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Verify authentication
+  const { userId, error: authError } = await verifyAuth(req);
+  if (!userId) {
+    console.log("Authentication failed:", authError);
+    return new Response(
+      JSON.stringify({ success: false, error: authError || 'Unauthorized' }),
+      { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
   try {
     const { email, inviteUrl, projectName, role, inviterName }: InvitationEmailRequest = await req.json();
 
-    console.log(`Sending invitation email to ${email} for project ${projectName}`);
+    // Validate required fields
+    if (!email || !inviteUrl || !projectName || !role) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Missing required fields' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Basic email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Invalid email format' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log(`Sending invitation email to ${email} for project ${projectName} by user ${userId}`);
 
     const roleLabel = roleLabels[role] || role;
 

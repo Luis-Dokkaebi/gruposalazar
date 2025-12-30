@@ -6,9 +6,10 @@ import { Buffer } from "node:buffer";
 const resendApiKey = Deno.env.get("RESEND_API_KEY");
 const supabaseUrl = Deno.env.get("SUPABASE_URL");
 const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
 
 const resend = new Resend(resendApiKey);
-const supabase = createClient(supabaseUrl!, supabaseServiceRoleKey!);
+const supabaseAdmin = createClient(supabaseUrl!, supabaseServiceRoleKey!);
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -30,9 +31,38 @@ const roleLabels: Record<string, string> = {
   soporte_tecnico: "Soporte Técnico",
 };
 
+// Verify authentication and return user ID
+const verifyAuth = async (req: Request): Promise<{ userId: string | null; error?: string }> => {
+  const authHeader = req.headers.get('authorization');
+  if (!authHeader) {
+    return { userId: null, error: 'Missing authorization header' };
+  }
+
+  const supabaseClient = createClient(supabaseUrl!, supabaseAnonKey!, {
+    global: { headers: { Authorization: authHeader } }
+  });
+
+  const { data: { user }, error } = await supabaseClient.auth.getUser();
+  if (error || !user) {
+    return { userId: null, error: 'Invalid or expired token' };
+  }
+
+  return { userId: user.id };
+};
+
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  // Verify authentication
+  const { userId, error: authError } = await verifyAuth(req);
+  if (!userId) {
+    console.log("Authentication failed:", authError);
+    return new Response(
+      JSON.stringify({ error: authError || 'Unauthorized' }),
+      { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
   }
 
   try {
@@ -42,10 +72,31 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("Missing estimation_id");
     }
 
-    console.log(`Processing authorization email for estimation: ${estimation_id}`);
+    console.log(`Processing authorization email for estimation: ${estimation_id} by user: ${userId}`);
+
+    // Verify user has access to this estimation (is project member)
+    const { data: memberCheck, error: memberError } = await supabaseAdmin
+      .from("project_members")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("project_id", (
+        await supabaseAdmin
+          .from("estimations")
+          .select("project_id")
+          .eq("id", estimation_id)
+          .single()
+      ).data?.project_id)
+      .limit(1);
+
+    if (memberError || !memberCheck || memberCheck.length === 0) {
+      return new Response(
+        JSON.stringify({ error: "Access denied - not a project member" }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // 1. Fetch Estimation Details
-    const { data: estimation, error: estError } = await supabase
+    const { data: estimation, error: estError } = await supabaseAdmin
       .from("estimations")
       .select(`
         *,
@@ -60,15 +111,12 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // 2. Fetch Latest Approval (Who authorized)
-    // Join with profiles to get the real name as requested
-    const { data: history, error: historyError } = await supabase
+    const { data: history, error: historyError } = await supabaseAdmin
       .from("approval_history")
       .select(`
         role,
         user_id,
-        profiles (
-            full_name
-        )
+        user_name
       `)
       .eq("estimation_id", estimation_id)
       .order("timestamp", { ascending: false })
@@ -79,17 +127,22 @@ const handler = async (req: Request): Promise<Response> => {
       console.warn("Could not fetch approval history, using 'Sistema'");
     }
 
-    // Get name from joined profile or fallback
-    const approverName = history?.profiles?.full_name || "Sistema";
+    // Get name from user_name column or fallback
+    const approverName = history?.user_name || "Sistema";
     const approverRole = history?.role ? roleLabels[history.role] : "Sistema";
 
-    // 3. Download PDF
+    // 3. Download PDF using file path (not URL)
     let attachments: any[] = [];
     if (estimation.pdf_url) {
       try {
-        const { data: fileData, error: fileError } = await supabase.storage
+        // Extract file path from URL or use directly if it's already a path
+        const filePath = estimation.pdf_url.includes('/')
+          ? estimation.pdf_url.split('/').pop()
+          : estimation.pdf_url;
+
+        const { data: fileData, error: fileError } = await supabaseAdmin.storage
           .from("estimations")
-          .download(estimation.pdf_url);
+          .download(filePath || estimation.pdf_url);
 
         if (fileError) throw fileError;
 
@@ -98,7 +151,7 @@ const handler = async (req: Request): Promise<Response> => {
           const buffer = new Uint8Array(arrayBuffer);
 
           attachments.push({
-            filename: estimation.pdf_url.split('/').pop() || "estimacion.pdf",
+            filename: filePath || "estimacion.pdf",
             content: Buffer.from(buffer),
           });
         }
@@ -128,7 +181,7 @@ const handler = async (req: Request): Promise<Response> => {
         subjectPrefix = "ESTIMACIÓN AUTORIZADA POR LÍDER";
         break;
       case "validated_compras":
-        targetRole = "contratista"; // Ideally email the creator
+        targetRole = "contratista";
         subjectPrefix = "ESTIMACIÓN VALIDADA POR COMPRAS";
         break;
       case "factura_subida":
@@ -148,35 +201,32 @@ const handler = async (req: Request): Promise<Response> => {
     const recipients: string[] = [];
 
     if (targetRole) {
-        if (targetRole === 'contratista') {
-            // Get creator email
-             const { data: creator } = await supabase
-                .from('profiles')
-                .select('email')
-                .eq('id', estimation.created_by)
-                .single();
-             if (creator?.email) recipients.push(creator.email);
-        } else {
-             // Get project members with this role
-             const { data: members } = await supabase
-                .from('project_members')
-                .select('user_id, profiles(email)')
-                .eq('project_id', estimation.project_id)
-                .eq('role', targetRole);
+      if (targetRole === 'contratista') {
+        const { data: creator } = await supabaseAdmin
+          .from('profiles')
+          .select('email')
+          .eq('id', estimation.created_by)
+          .single();
+        if (creator?.email) recipients.push(creator.email);
+      } else {
+        const { data: members } = await supabaseAdmin
+          .from('project_members')
+          .select('user_id, profiles(email)')
+          .eq('project_id', estimation.project_id)
+          .eq('role', targetRole);
 
-             members?.forEach((m: any) => {
-                 if (m.profiles?.email) recipients.push(m.profiles.email);
-             });
-        }
+        members?.forEach((m: any) => {
+          if (m.profiles?.email) recipients.push(m.profiles.email);
+        });
+      }
     }
 
-    // Deduplicate emails
     const uniqueRecipients = [...new Set(recipients)];
 
     if (uniqueRecipients.length === 0) {
-        return new Response(JSON.stringify({ success: true, message: "No recipients found" }), {
-            headers: { "Content-Type": "application/json", ...corsHeaders },
-        });
+      return new Response(JSON.stringify({ success: true, message: "No recipients found" }), {
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
     }
 
     const emailHtml = `
@@ -223,6 +273,8 @@ const handler = async (req: Request): Promise<Response> => {
       html: emailHtml,
       attachments: attachments,
     });
+
+    console.log("Email sent successfully to:", uniqueRecipients);
 
     return new Response(JSON.stringify(data), {
       headers: { "Content-Type": "application/json", ...corsHeaders },
