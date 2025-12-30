@@ -3,7 +3,6 @@ import { useEstimationStore } from "@/lib/estimationStore";
 import { useProject } from "@/contexts/ProjectContext";
 import { useProjectEstimations } from "@/hooks/useProjectEstimations";
 import { supabase } from "@/integrations/supabase/client";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,14 +15,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -31,8 +22,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
-import { Upload, Plus, Loader2, AlertCircle, Eye, Pencil } from "lucide-react";
+import { Upload, Plus, Loader2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { EmailModal } from "@/components/EmailModal";
 import { EstimationDetailModal } from "@/components/EstimationDetailModal";
@@ -40,6 +30,8 @@ import { mapDbEstimationToFrontend } from "@/lib/estimationMapper";
 import type { Database } from "@/integrations/supabase/types";
 import { Estimation } from "@/types/estimation";
 import { PageHeader } from "@/components/PageHeader";
+import { EstimationCard } from "@/components/EstimationCard";
+import { Card } from "@/components/ui/card";
 
 type Contract = Database['public']['Tables']['contracts']['Row'];
 type CostCenter = Database['public']['Tables']['cost_centers']['Row'];
@@ -189,30 +181,6 @@ export default function Estimaciones() {
     }
   };
 
-  // Helper for Status Badge
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "registered":
-        return <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 hover:bg-yellow-200">En Revisión: Residente</Badge>;
-      case "auth_resident":
-        return <Badge variant="secondary" className="bg-orange-100 text-orange-800 hover:bg-orange-200">En Revisión: Superintendente</Badge>;
-      case "auth_super":
-        return <Badge variant="default" className="bg-blue-600">Autorizada: Super</Badge>;
-      case "auth_leader":
-        return <Badge variant="default" className="bg-green-600">Autorizada: Líder</Badge>;
-      case "validated_compras":
-        return <Badge variant="outline" className="border-blue-600 text-blue-600">Validada: Compras</Badge>;
-      case "factura_subida":
-        return <Badge variant="outline" className="border-green-600 text-green-600">Factura Subida</Badge>;
-      case "validated_finanzas":
-        return <Badge variant="outline" className="border-purple-600 text-purple-600">Validada: Finanzas</Badge>;
-      case "paid":
-        return <Badge variant="default" className="bg-emerald-600">Pagada</Badge>;
-      default:
-        return <Badge variant="outline">{status}</Badge>;
-    }
-  };
-
   if (!currentProjectId) {
     return (
       <div className="space-y-8">
@@ -231,7 +199,7 @@ export default function Estimaciones() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-[1600px] mx-auto pb-10">
       <PageHeader
         title="Mis Estimaciones"
         subtitle="Gestiona y visualiza el estado de tus estimaciones"
@@ -370,7 +338,7 @@ export default function Estimaciones() {
       }
       />
 
-      <div className="space-y-4">
+      <div className="space-y-6">
         {/* Quick Filters */}
         <Tabs defaultValue="all" value={activeFilter} onValueChange={setActiveFilter} className="w-full">
           <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 lg:w-[800px]">
@@ -381,8 +349,8 @@ export default function Estimaciones() {
           </TabsList>
         </Tabs>
 
-        {/* Table View */}
-        <Card className="border-border overflow-hidden">
+        {/* List View */}
+        <div className="space-y-6">
           {loading ? (
             <div className="p-12 text-center">
               <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
@@ -394,60 +362,31 @@ export default function Estimaciones() {
               <p className="text-destructive">{error}</p>
             </div>
           ) : filteredEstimations.length === 0 ? (
-             <div className="p-12 text-center">
+             <div className="p-12 text-center border border-dashed rounded-lg">
               <p className="text-muted-foreground">No se encontraron estimaciones con este filtro.</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Folio</TableHead>
-                    <TableHead>Contratista</TableHead>
-                    <TableHead>Monto</TableHead>
-                    <TableHead>Estado</TableHead>
-                    <TableHead>Fecha</TableHead>
-                    <TableHead className="text-right">Acciones</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredEstimations.map((est) => (
-                    <TableRow key={est.id}>
-                      <TableCell className="font-medium">{est.folio}</TableCell>
-                      <TableCell>{est.contractorName}</TableCell>
-                      <TableCell>${est.amount.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</TableCell>
-                      <TableCell>{getStatusBadge(est.status)}</TableCell>
-                      <TableCell>{new Date(est.createdAt).toLocaleDateString()}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setSelectedEstimation(est)}
-                            title="Ver Detalles"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          {/* Only show Edit if contractor and status is editable */}
-                           {currentRole === 'contratista' && est.status === 'registered' && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              title="Editar"
-                              onClick={() => setSelectedEstimation(est)}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                           )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+            <div className="flex flex-col gap-6">
+              {filteredEstimations.map((est) => {
+                const contract = contracts.find(c => c.id === est.contractId);
+                const costCenter = costCenters.find(c => c.id === est.costCenterId);
+
+                return (
+                  <EstimationCard
+                    key={est.id}
+                    estimation={est}
+                    contract={contract}
+                    costCenter={costCenter}
+                    onClick={() => setSelectedEstimation(est)}
+                    // We don't show approval actions here as this is "My Estimations" view.
+                    // Approval happens in Dashboard/ActionCard for specific roles.
+                    showActions={false}
+                  />
+                );
+              })}
             </div>
           )}
-        </Card>
+        </div>
       </div>
 
       <EmailModal
