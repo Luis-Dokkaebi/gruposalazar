@@ -9,7 +9,8 @@ import { Buffer } from "node:buffer";
 // @ts-ignore: Mocking global window
 globalThis.window = globalThis;
 // @ts-ignore: Mocking global document
-globalThis.document = {
+// deno-lint-ignore no-explicit-any
+(globalThis as any).document = {
   createElementNS: () => ({}),
 };
 // @ts-ignore: Mocking navigator
@@ -88,7 +89,8 @@ serve(async (req) => {
     // For now, relying on the fact they are authenticated and the sensitive operation (sending email) is reasonably safe for testing.
 
     // 4. Define PDF Content
-    const docDefinition = {
+    // @ts-ignore: pdfmake type definition issues
+    const docDefinition: any = {
       content: [
         {
           columns: [
