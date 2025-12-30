@@ -21,6 +21,7 @@ import { ApprovalTimeline } from "./ApprovalTimeline";
 import { ApprovalSummary } from "./ApprovalSummary";
 import { NotificationManager } from "./NotificationManager";
 import { EstimationRolesConfig } from "./dashboard/EstimationRolesConfig";
+import { RoleInvitationCard } from "./RoleInvitationCard";
 import type { Database } from "@/integrations/supabase/types";
 
 type AppRole = Database['public']['Enums']['app_role'];
@@ -384,6 +385,45 @@ export function EstimationDetailModal({ estimation, onClose, projectId, onRefres
                     })}
                   </div>
                 </div>
+
+                {/* Role Invitation Cards - Only for soporte_tecnico */}
+                {currentRole === 'soporte_tecnico' && projectId && (
+                  <div className="space-y-4">
+                    <h3 className="font-semibold text-lg">Invitar Aprobadores</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <RoleInvitationCard
+                        role="residente"
+                        roleName="Residente"
+                        projectId={projectId}
+                        projectName={estimation.projectNumber}
+                        isActive={estimation.is_resident_active}
+                        isApproved={!!estimation.resident_approved_at}
+                        approvedBy={estimation.resident_signed_by}
+                        approvedAt={estimation.resident_approved_at}
+                      />
+                      <RoleInvitationCard
+                        role="superintendente"
+                        roleName="Superintendente"
+                        projectId={projectId}
+                        projectName={estimation.projectNumber}
+                        isActive={estimation.is_superintendent_active}
+                        isApproved={!!estimation.superintendent_approved_at}
+                        approvedBy={estimation.superintendent_signed_by}
+                        approvedAt={estimation.superintendent_approved_at}
+                      />
+                      <RoleInvitationCard
+                        role="lider_proyecto"
+                        roleName="Líder de Proyecto"
+                        projectId={projectId}
+                        projectName={estimation.projectNumber}
+                        isActive={estimation.is_leader_active}
+                        isApproved={!!estimation.leader_approved_at}
+                        approvedBy={estimation.leader_signed_by}
+                        approvedAt={estimation.leader_approved_at}
+                      />
+                    </div>
+                  </div>
+                )}
 
                 {/* Description */}
                 <div className="p-4 bg-muted/50 rounded-lg">
