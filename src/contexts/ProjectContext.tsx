@@ -23,7 +23,7 @@ interface ProjectContextType {
   createProject: (name: string, description?: string) => Promise<Project>;
 }
 
-const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
+export const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
 
 export function ProjectProvider({ children }: { children: ReactNode }) {
   const { projects, loading, error, refetch, createProject } = useUserProjects();
