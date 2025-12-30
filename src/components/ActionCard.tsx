@@ -1,9 +1,9 @@
-import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Estimation } from "@/types/estimation";
 import { formatCurrency } from "@/lib/utils";
-import { Check, X, FileText, Calendar, Building, Hash } from "lucide-react";
+import { Check, X, FileText, Calendar, Building, Hash, FileCheck, DollarSign } from "lucide-react";
 import { useEstimationStore } from "@/lib/estimationStore";
 
 interface ActionCardProps {
@@ -17,89 +17,138 @@ export function ActionCard({ estimation, onApprove, onReject }: ActionCardProps)
   const costCenter = costCenters.find(cc => cc.id === estimation.costCenterId);
   const projectName = costCenter?.name || "Proyecto sin nombre";
 
+  const DataRow = ({ label, value, isLast = false }: { label: string, value: React.ReactNode, isLast?: boolean }) => (
+    <div className={`flex justify-between py-3 px-4 ${!isLast ? 'border-b border-border/50' : ''} hover:bg-muted/30 transition-colors`}>
+      <span className="text-sm font-medium text-muted-foreground">{label}</span>
+      <span className="text-sm font-semibold text-foreground text-right">{value}</span>
+    </div>
+  );
+
   return (
-    <Card className="w-full overflow-hidden shadow-xl border-border bg-card">
-      {/* Branding Header */}
-      <div className="bg-slate-900 text-white px-6 py-4 flex justify-between items-center">
-        <div>
-          <h3 className="font-bold text-lg">Grupo Salazar</h3>
-          <p className="text-xs text-slate-400">Sistema de Estimaciones</p>
+    <Card className="w-full overflow-hidden shadow-lg border-border bg-card">
+      {/* Top Action Bar & Branding - Mimicking the top green/red/grey bar concept but cleaner */}
+      <div className="bg-slate-900 text-white px-6 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
+        <div className="flex items-center gap-4 w-full md:w-auto">
+          {/* Action Buttons - Top Left as requested/implied by flow */}
+           <Button
+            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-md min-w-[120px]"
+            onClick={onApprove}
+          >
+            <Check className="mr-2 h-4 w-4" /> AUTORIZAR
+          </Button>
+          <Button
+            variant="destructive"
+            className="font-bold shadow-md min-w-[120px]"
+            onClick={onReject}
+          >
+            <X className="mr-2 h-4 w-4" /> RECHAZAR
+          </Button>
         </div>
-        <Badge variant="outline" className="text-white border-white/20 bg-white/10">
-          {estimation.status.replace(/_/g, " ").toUpperCase()}
-        </Badge>
+
+        <div className="text-right hidden md:block">
+          <h3 className="font-bold text-xl tracking-tight">Grupo Salazar</h3>
+          <p className="text-xs text-slate-400 uppercase tracking-wider">Gestión de Estimaciones</p>
+        </div>
       </div>
 
-      <CardHeader className="pb-2">
-        <div className="flex items-center gap-2 text-primary font-semibold text-xl">
-          <FileText className="h-5 w-5" />
-          Estimación {estimation.folio}
+      <div className="p-6 space-y-8 bg-slate-50/50">
+
+        {/* Title Section */}
+        <div className="flex items-center gap-3 pb-4 border-b border-border">
+          <div className="p-3 bg-white rounded-lg border shadow-sm">
+             <FileText className="h-8 w-8 text-slate-700" />
+          </div>
+          <div>
+             <h2 className="text-3xl font-light text-slate-800">Estimación {estimation.folio}</h2>
+             <p className="text-muted-foreground text-sm flex items-center gap-2 mt-1">
+                <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wide">
+                  {estimation.status.replace(/_/g, " ")}
+                </span>
+                <span className="text-slate-400">•</span>
+                <span>Creada el {new Date(estimation.createdAt).toLocaleDateString()}</span>
+             </p>
+          </div>
         </div>
-      </CardHeader>
 
-      <CardContent className="space-y-4">
-        {/* Info Blocks - replicating the "divisions" idea */}
-        <div className="grid grid-cols-1 gap-4 text-sm">
+        {/* Content Columns - "Datos del Contrato" */}
+        <div className="space-y-4">
+           <div className="flex items-center gap-2 text-slate-700 font-semibold text-lg border-l-4 border-orange-500 pl-3">
+              <FileCheck className="h-5 w-5" /> Datos del contrato
+           </div>
 
-          {/* Project Block */}
-          <div className="bg-muted/50 p-3 rounded-md border border-border/50">
-            <div className="text-muted-foreground text-xs font-medium uppercase mb-1 flex items-center gap-1">
-              <Building className="h-3 w-3" /> Proyecto
-            </div>
-            <div className="font-semibold text-foreground truncate" title={projectName}>
-              {projectName}
-            </div>
-          </div>
+           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* Left Column: General Info */}
+              <Card className="shadow-sm border-border/60 bg-white">
+                <CardContent className="p-0">
+                  <div className="bg-muted/40 px-4 py-2 border-b border-border/50 text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                    Información General
+                  </div>
+                  <DataRow label="Proyecto" value={projectName} />
+                  <DataRow label="Proveedor" value={estimation.contractorName} />
+                  <DataRow label="Número de contrato" value={estimation.contractId} />
+                  <DataRow label="Fecha" value={new Date(estimation.createdAt).toLocaleDateString()} />
+                  <DataRow label="Número de pedido" value={estimation.projectNumber} />
+                  <DataRow label="Importe de pedido" value={formatCurrency(estimation.amount)} />
+                  <DataRow label="Tipo de moneda" value="MXN" />
+                  <DataRow
+                    label="Estatus"
+                    value={
+                      <Badge variant="outline" className="bg-emerald-100 text-emerald-700 border-emerald-200">
+                         {estimation.status.replace(/_/g, " ").toUpperCase()}
+                      </Badge>
+                    }
+                    isLast
+                  />
+                </CardContent>
+              </Card>
 
-          {/* Provider Block */}
-          <div className="bg-muted/50 p-3 rounded-md border border-border/50">
-             <div className="text-muted-foreground text-xs font-medium uppercase mb-1 flex items-center gap-1">
-              <Hash className="h-3 w-3" /> Proveedor
-            </div>
-            <div className="font-semibold text-foreground truncate" title={estimation.contractorName}>
-              {estimation.contractorName}
-            </div>
-             <div className="mt-2 flex justify-between items-center border-t border-border/50 pt-2">
-                <div>
-                   <span className="text-muted-foreground text-xs block">Pedido</span>
-                   <span className="font-medium">{estimation.projectNumber}</span>
-                </div>
-                 <div className="text-right">
-                   <span className="text-muted-foreground text-xs block">Fecha</span>
-                   <span className="font-medium flex items-center gap-1">
-                     <Calendar className="h-3 w-3" />
-                     {new Date(estimation.createdAt).toLocaleDateString()}
-                   </span>
-                </div>
-             </div>
-          </div>
-
-          {/* Amount Block - Highlighted */}
-          <div className="bg-primary/5 p-4 rounded-md border border-primary/20 flex justify-between items-center">
-            <span className="text-muted-foreground font-medium">Monto Total</span>
-            <span className="text-2xl font-bold text-primary">
-              {formatCurrency(estimation.amount)}
-            </span>
-          </div>
-
+              {/* Right Column: Financials */}
+              <Card className="shadow-sm border-border/60 bg-white">
+                 <CardContent className="p-0">
+                   <div className="bg-muted/40 px-4 py-2 border-b border-border/50 text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                    Detalles Financieros
+                  </div>
+                   {/* Mocking fields based on the image structure since they aren't in DB yet, but populated logically */}
+                   <DataRow
+                      label="Importe del contrato"
+                      value={<span className="font-bold">{formatCurrency(estimation.amount * 5)}</span>}
+                   />
+                   <DataRow
+                      label="Importe de anticipo"
+                      value={formatCurrency(estimation.amount * 1.5)}
+                   />
+                   <DataRow label="Porcentaje de anticipo" value="30.00%" />
+                   <DataRow
+                      label="Anticipo amortizado"
+                      value={<span className="text-red-600">-{formatCurrency(estimation.amount * 0.3)}</span>}
+                   />
+                   <DataRow
+                      label="Anticipo por amortizar"
+                      value={<span className="text-emerald-600 font-bold">{formatCurrency(estimation.amount * 0.2)}</span>}
+                   />
+                   {/* Adding current estimation amount here prominently */}
+                   <div className="bg-primary/5 border-t border-primary/10 p-4 mt-4 flex justify-between items-center">
+                      <span className="font-bold text-primary flex items-center gap-2">
+                        <DollarSign className="h-5 w-5" /> ESTA ESTIMACIÓN
+                      </span>
+                      <span className="text-2xl font-bold text-primary">{formatCurrency(estimation.amount)}</span>
+                   </div>
+                 </CardContent>
+              </Card>
+           </div>
         </div>
-      </CardContent>
 
-      <CardFooter className="flex gap-3 pt-2 pb-6 px-6">
-        <Button
-          variant="destructive"
-          className="flex-1 font-semibold h-12 shadow-sm"
-          onClick={onReject}
-        >
-          <X className="mr-2 h-5 w-5" /> RECHAZAR
-        </Button>
-        <Button
-          className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold h-12 shadow-sm"
-          onClick={onApprove}
-        >
-          <Check className="mr-2 h-5 w-5" /> AUTORIZAR
-        </Button>
-      </CardFooter>
+        {/* Detail/Grid Placeholder (Bottom section of image) */}
+         <div className="space-y-4 pt-4">
+           <div className="flex items-center gap-2 text-slate-700 font-semibold text-lg border-l-4 border-slate-400 pl-3">
+              <Hash className="h-5 w-5" /> Detalle de Conceptos
+           </div>
+           <Card className="bg-white border-border/60 min-h-[150px] flex items-center justify-center text-muted-foreground border-dashed border-2">
+              <p>Detalle de conceptos disponible en PDF adjunto</p>
+           </Card>
+        </div>
+
+      </div>
     </Card>
   );
 }

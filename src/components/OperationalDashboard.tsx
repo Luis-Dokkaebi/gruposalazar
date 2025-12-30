@@ -2,7 +2,7 @@ import { useEstimationStore } from "@/lib/estimationStore";
 import { ActionCard } from "@/components/ActionCard";
 import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/ui/card";
-import { CheckCircle, FileText } from "lucide-react";
+import { CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 import { EstimationStatus } from "@/types/estimation";
 
@@ -67,11 +67,6 @@ export function OperationalDashboard() {
   };
 
   const handleReject = (id: string) => {
-    // For now, rejection might just imply sending it back or logging.
-    // The prompt only asked for buttons to emit events.
-    // Usually rejection sends it back to 'registered' or previous step.
-    // I'll simulate a rejection toast for now as logic wasn't fully specified beyond "emit event".
-    // But to be helpful, I'll log it.
     toast.error("Funcionalidad de rechazo pendiente de definir flujo exacto");
     console.log(`Rejected estimation ${id} by ${currentRole}`);
   };
@@ -86,7 +81,7 @@ export function OperationalDashboard() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-[1600px] mx-auto">
       <PageHeader
         title={roleTitles[currentRole] || "Dashboard Operativo"}
         subtitle="Gestione las estimaciones pendientes de su área"
@@ -105,7 +100,8 @@ export function OperationalDashboard() {
           </p>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        /* Changed to single column stack to allow full width cards */
+        <div className="flex flex-col gap-12 pb-12">
           {relevantEstimations.map((estimation) => (
             <ActionCard
               key={estimation.id}
