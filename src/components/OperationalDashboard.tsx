@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 import { EstimationStatus } from "@/types/estimation";
+import { supabase } from "@/integrations/supabase/client";
 
 export function OperationalDashboard() {
   const { currentRole, estimations, updateEstimationStatus } = useEstimationStore();
@@ -32,13 +33,27 @@ export function OperationalDashboard() {
 
   const relevantEstimations = getRelevantEstimations();
 
-  const handleApprove = (id: string) => {
+  const handleApprove = async (id: string) => {
     let nextStatus: EstimationStatus | null = null;
     let successMessage = "Estimación autorizada correctamente";
 
     switch (currentRole) {
       case 'residente':
         nextStatus = 'auth_resident';
+        // Trigger PDF generation and email for Resident approval
+        toast.info("Generando documento oficial y enviando correo...");
+        try {
+          const { error } = await supabase.functions.invoke('generate-approval-pdf', {
+            body: { estimation_id: id }
+          });
+          if (error) {
+            console.error('Function error:', error);
+            throw error;
+          }
+        } catch (error) {
+          console.error('Error generating PDF:', error);
+          toast.error("Alerta: El documento no se pudo generar automáticamente.");
+        }
         break;
       case 'superintendente':
         nextStatus = 'auth_super';
