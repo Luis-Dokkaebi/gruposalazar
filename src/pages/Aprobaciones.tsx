@@ -3,24 +3,55 @@ import { useEstimationStore } from "@/lib/estimationStore";
 import { useProject } from "@/contexts/ProjectContext";
 import { useProjectEstimations } from "@/hooks/useProjectEstimations";
 import { useProjectData } from "@/hooks/useProjectData";
+import { useAuth } from "@/contexts/AuthContext";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { FileText, Eye, Loader2, AlertCircle } from "lucide-react";
-import { EstimationDetailModal } from "@/components/EstimationDetailModal";
+import { 
+  FileText, 
+  Loader2, 
+  AlertCircle, 
+  ChevronDown,
+  ChevronUp,
+  CheckCircle2,
+  XCircle,
+  FileDown,
+  Send,
+  Wallet,
+  FileSpreadsheet,
+  ChevronLeft,
+  ChevronRight
+} from "lucide-react";
 import { mapDbEstimationToFrontend } from "@/lib/estimationMapper";
 import { Estimation, UserRole } from "@/types/estimation";
 import { PageHeader } from "@/components/PageHeader";
+import { toast } from "sonner";
+import { 
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from "@/components/ui/table";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger
+} from "@/components/ui/collapsible";
+import type { Database } from "@/integrations/supabase/types";
+
+type AppRole = Database['public']['Enums']['app_role'];
 
 const statusConfig: Record<string, { label: string; variant: string; badge: string }> = {
-  registered: { label: "Pendiente Residente", variant: "warning", badge: "bg-amber-100 text-amber-700" },
-  auth_resident: { label: "Pendiente Superintendente", variant: "default", badge: "bg-blue-100 text-blue-700" },
-  auth_super: { label: "Pendiente Líder", variant: "default", badge: "bg-indigo-100 text-indigo-700" },
-  auth_leader: { label: "Pendiente Compras", variant: "default", badge: "bg-purple-100 text-purple-700" },
-  validated_compras: { label: "Validado - Pendiente Factura", variant: "success", badge: "bg-green-100 text-green-700" },
-  factura_subida: { label: "Factura Subida - Pendiente Finanzas", variant: "default", badge: "bg-teal-100 text-teal-700" },
-  validated_finanzas: { label: "Pendiente Pago", variant: "default", badge: "bg-cyan-100 text-cyan-700" },
-  paid: { label: "Pagado", variant: "success", badge: "bg-emerald-100 text-emerald-700" },
+  registered: { label: "Registrada", variant: "warning", badge: "bg-amber-100 text-amber-700" },
+  auth_resident: { label: "Pre-Estimación revisada por residente", variant: "default", badge: "bg-blue-500 text-white" },
+  auth_super: { label: "Pre-Estimación revisada por superintendente", variant: "default", badge: "bg-indigo-500 text-white" },
+  auth_leader: { label: "Pre-Estimación revisada por líder", variant: "default", badge: "bg-purple-500 text-white" },
+  validated_compras: { label: "Validado por Compras", variant: "success", badge: "bg-green-500 text-white" },
+  factura_subida: { label: "Factura Subida", variant: "default", badge: "bg-teal-500 text-white" },
+  validated_finanzas: { label: "Validado por Finanzas", variant: "default", badge: "bg-cyan-500 text-white" },
+  paid: { label: "Pagado", variant: "success", badge: "bg-emerald-600 text-white" },
 };
 
 const getFilteredEstimations = (estimations: Estimation[], role: UserRole): Estimation[] => {
@@ -47,14 +78,17 @@ const getFilteredEstimations = (estimations: Estimation[], role: UserRole): Esti
 export default function Aprobaciones() {
   const { currentRole } = useEstimationStore();
   const { currentProjectId } = useProject();
-  const { estimations: dbEstimations, loading, error, refetch } = useProjectEstimations(currentProjectId);
+  const { estimations: dbEstimations, loading, error, refetch, approveEstimation } = useProjectEstimations(currentProjectId);
   const { contracts, costCenters } = useProjectData(currentProjectId);
+  const { user } = useAuth();
   
-  const [selectedEstimation, setSelectedEstimation] = useState<Estimation | null>(null);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isDetailOpen, setIsDetailOpen] = useState(true);
+  const [isProcessing, setIsProcessing] = useState(false);
 
-  // Map DB estimations to frontend format
   const estimations = dbEstimations.map(est => mapDbEstimationToFrontend(est as any));
   const filteredEstimations = getFilteredEstimations(estimations, currentRole);
+  const currentEstimation = filteredEstimations[currentIndex];
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('es-MX', {
@@ -62,6 +96,69 @@ export default function Aprobaciones() {
       currency: 'MXN',
       minimumFractionDigits: 2,
     }).format(amount);
+  };
+
+  const formatDate = (date: string | Date | undefined) => {
+    if (!date) return '';
+    const d = typeof date === 'string' ? new Date(date) : date;
+    return d.toLocaleDateString('es-MX', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).replace(/\//g, '/');
+  };
+
+  const handleApprove = async () => {
+    if (!currentProjectId || !currentEstimation) return;
+    
+    setIsProcessing(true);
+    try {
+      const userName = user?.email || 'Usuario';
+      await approveEstimation(
+        currentEstimation.id,
+        currentRole as AppRole,
+        userName
+      );
+      
+      toast.success(
+        <div className="flex flex-col gap-1">
+          <div className="font-bold">✅ Autorización Exitosa</div>
+          <div className="text-sm">Folio {currentEstimation.folio}. Pre-estimación actualizada.</div>
+          <div className="text-sm">Número de aceptación generado.</div>
+        </div>,
+        { duration: 4000 }
+      );
+      
+      refetch();
+    } catch (error: any) {
+      toast.error(`Error: ${error.message}`);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleReject = () => {
+    toast.info("Funcionalidad de rechazo en desarrollo");
+  };
+
+  const handleExportPDF = () => {
+    toast.info("Exportando a PDF...");
+  };
+
+  const handleSendEmail = () => {
+    toast.info("Enviando por correo...");
+  };
+
+  const goToPrevious = () => {
+    if (currentIndex > 0) {
+      setCurrentIndex(currentIndex - 1);
+    }
+  };
+
+  const goToNext = () => {
+    if (currentIndex < filteredEstimations.length - 1) {
+      setCurrentIndex(currentIndex + 1);
+    }
   };
 
   if (!currentProjectId) {
@@ -83,28 +180,55 @@ export default function Aprobaciones() {
     );
   }
 
-  return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Bandeja de Aprobaciones"
-        subtitle="Gestiona las estimaciones pendientes según tu rol actual"
-        breadcrumbs={[
-          { label: "Inicio", href: "/" },
-          { label: "Aprobaciones" },
-        ]}
-      />
-
-      {loading ? (
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          title="Bandeja de Aprobaciones"
+          subtitle="Gestiona las estimaciones pendientes según tu rol actual"
+          breadcrumbs={[
+            { label: "Inicio", href: "/" },
+            { label: "Aprobaciones" },
+          ]}
+        />
         <Card className="p-12 text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
           <p className="text-muted-foreground mt-4">Cargando estimaciones...</p>
         </Card>
-      ) : error ? (
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          title="Bandeja de Aprobaciones"
+          subtitle="Gestiona las estimaciones pendientes según tu rol actual"
+          breadcrumbs={[
+            { label: "Inicio", href: "/" },
+            { label: "Aprobaciones" },
+          ]}
+        />
         <Card className="p-12 text-center">
           <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
           <p className="text-destructive">{error}</p>
         </Card>
-      ) : filteredEstimations.length === 0 ? (
+      </div>
+    );
+  }
+
+  if (filteredEstimations.length === 0) {
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          title="Bandeja de Aprobaciones"
+          subtitle="Gestiona las estimaciones pendientes según tu rol actual"
+          breadcrumbs={[
+            { label: "Inicio", href: "/" },
+            { label: "Aprobaciones" },
+          ]}
+        />
         <Card className="p-12 text-center">
           <FileText className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
           <h3 className="text-lg font-semibold text-foreground mb-2">No hay estimaciones pendientes</h3>
@@ -112,80 +236,309 @@ export default function Aprobaciones() {
             No tienes estimaciones pendientes de aprobación en este momento.
           </p>
         </Card>
-      ) : (
-        <div className="grid gap-4">
-          {filteredEstimations.map((estimation) => {
-            const costCenter = costCenters.find(cc => cc.id === estimation.costCenterId);
-            const contract = contracts.find(c => c.id === estimation.contractId);
-            const config = statusConfig[estimation.status];
+      </div>
+    );
+  }
 
-            return (
-              <Card
-                key={estimation.id}
-                className="p-6 bg-card border border-border rounded-xl hover:-translate-y-1 hover:border-primary/30 hover:shadow-lg transition-all duration-300 cursor-pointer"
-                onClick={() => setSelectedEstimation(estimation)}
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex items-start gap-4 flex-1">
-                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                      <FileText className="h-5 w-5 text-primary" />
-                    </div>
-                    
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-lg font-bold text-foreground">{costCenter?.name || 'Proyecto'}</h3>
-                        <Badge className={`${config.badge} border-0 text-xs font-semibold uppercase tracking-wide px-3 py-1`}>
-                          {config.label}
-                        </Badge>
-                      </div>
-                      
-                      <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm text-muted-foreground mt-3">
-                        <div>
-                          <span className="font-medium">Folio:</span> {estimation.folio}
-                        </div>
-                        <div>
-                          <span className="font-medium">Proyecto:</span> {estimation.projectNumber}
-                        </div>
-                        <div>
-                          <span className="font-medium">Contrato:</span> {contract?.name || 'N/A'}
-                        </div>
-                        <div>
-                          <span className="font-medium">Monto:</span> {formatCurrency(estimation.amount)}
-                        </div>
-                        <div className="col-span-2">
-                          <span className="font-medium">Contratista:</span> {estimation.contractorName}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+  const costCenter = costCenters.find(cc => cc.id === currentEstimation?.costCenterId);
+  const contract = contracts.find(c => c.id === currentEstimation?.contractId);
+  const config = statusConfig[currentEstimation?.status || 'registered'];
 
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedEstimation(estimation);
-                    }}
-                    className="flex items-center gap-2"
-                  >
-                    <Eye className="h-4 w-4" />
-                    Ver Detalle
-                  </Button>
-                </div>
-              </Card>
-            );
-          })}
+  // Demo data for anticipo section
+  const anticipoData = {
+    importeContrato: currentEstimation?.amount || 0,
+    importeAnticipo: (currentEstimation?.amount || 0) * 0.3,
+    porcentajeAnticipo: 30.00,
+    anticipoAmortizado: -((currentEstimation?.amount || 0) * 0.25),
+    anticipoPorAmortizar: (currentEstimation?.amount || 0) * 0.05,
+  };
+
+  return (
+    <div className="space-y-4 bg-background min-h-screen">
+      {/* Action Bar */}
+      <div className="flex items-center gap-2 p-4 bg-muted/30 border-b border-border">
+        <Button 
+          onClick={handleApprove}
+          disabled={isProcessing}
+          className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
+        >
+          <CheckCircle2 className="mr-2 h-4 w-4" />
+          {isProcessing ? 'Procesando...' : 'Autorizar +'}
+        </Button>
+        
+        <Button 
+          onClick={handleReject}
+          variant="destructive"
+          className="font-semibold"
+        >
+          <XCircle className="mr-2 h-4 w-4" />
+          Rechazar +
+        </Button>
+        
+        <Button 
+          onClick={handleExportPDF}
+          variant="outline"
+          className="font-semibold"
+        >
+          <FileDown className="mr-2 h-4 w-4" />
+          Exportar a PDF
+        </Button>
+        
+        <Button 
+          onClick={handleSendEmail}
+          variant="outline"
+          className="font-semibold"
+        >
+          <Send className="mr-2 h-4 w-4" />
+          Enviar por...
+        </Button>
+
+        {/* Navigation */}
+        <div className="ml-auto flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">
+            {currentIndex + 1} de {filteredEstimations.length}
+          </span>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={goToPrevious}
+            disabled={currentIndex === 0}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={goToNext}
+            disabled={currentIndex === filteredEstimations.length - 1}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
         </div>
-      )}
+      </div>
 
-      {selectedEstimation && (
-        <EstimationDetailModal
-          estimation={selectedEstimation}
-          projectId={currentProjectId}
-          onClose={() => setSelectedEstimation(null)}
-          onRefresh={refetch}
-        />
-      )}
+      {/* Title */}
+      <div className="px-6">
+        <h1 className="text-2xl font-bold text-foreground">
+          Estimación {currentIndex + 1}
+        </h1>
+      </div>
+
+      {/* Two Column Layout: Contract Data & Anticipo */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 px-6">
+        {/* Contract Data Panel */}
+        <div className="bg-card border border-border rounded-lg overflow-hidden">
+          <div className="bg-muted/50 px-4 py-3 border-b border-border flex items-center gap-2">
+            <FileSpreadsheet className="h-4 w-4 text-muted-foreground" />
+            <span className="font-semibold text-foreground">Datos del contrato</span>
+          </div>
+          
+          <Table>
+            <TableBody>
+              <TableRow className="hover:bg-muted/30">
+                <TableCell className="text-primary font-medium border-l-4 border-l-primary/30 w-1/3">
+                  Proyecto
+                </TableCell>
+                <TableCell className="text-foreground">
+                  {currentEstimation?.projectNumber || 'N/A'}
+                </TableCell>
+              </TableRow>
+              <TableRow className="hover:bg-muted/30">
+                <TableCell className="text-primary font-medium border-l-4 border-l-primary/30">
+                  Proveedor
+                </TableCell>
+                <TableCell className="text-foreground">
+                  {currentEstimation?.contractorName || 'N/A'}
+                </TableCell>
+              </TableRow>
+              <TableRow className="hover:bg-muted/30">
+                <TableCell className="text-primary font-medium border-l-4 border-l-primary/30">
+                  Número de contrato
+                </TableCell>
+                <TableCell className="text-foreground">
+                  {contract?.name || 'N/A'}
+                </TableCell>
+              </TableRow>
+              <TableRow className="hover:bg-muted/30">
+                <TableCell className="text-primary font-medium border-l-4 border-l-primary/30">
+                  Fecha
+                </TableCell>
+                <TableCell className="text-foreground">
+                  {formatDate(currentEstimation?.createdAt)}
+                </TableCell>
+              </TableRow>
+              <TableRow className="hover:bg-muted/30">
+                <TableCell className="text-primary font-medium border-l-4 border-l-primary/30">
+                  Número de pedido
+                </TableCell>
+                <TableCell className="text-foreground">
+                  {currentEstimation?.folio || 'N/A'}
+                </TableCell>
+              </TableRow>
+              <TableRow className="hover:bg-muted/30">
+                <TableCell className="text-primary font-medium border-l-4 border-l-primary/30">
+                  Importe de pedido
+                </TableCell>
+                <TableCell className="text-foreground font-semibold">
+                  {formatCurrency(currentEstimation?.amount || 0)}
+                </TableCell>
+              </TableRow>
+              <TableRow className="hover:bg-muted/30">
+                <TableCell className="text-primary font-medium border-l-4 border-l-primary/30">
+                  Tipo de moneda
+                </TableCell>
+                <TableCell className="text-foreground">
+                  MXN
+                </TableCell>
+              </TableRow>
+              <TableRow className="hover:bg-muted/30">
+                <TableCell className="text-primary font-medium border-l-4 border-l-primary/30">
+                  Estatus
+                </TableCell>
+                <TableCell>
+                  <Badge className={`${config.badge} text-xs font-semibold px-3 py-1`}>
+                    {config.label}
+                  </Badge>
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </div>
+
+        {/* Anticipo Panel */}
+        <div className="bg-card border border-border rounded-lg overflow-hidden">
+          <div className="bg-muted/50 px-4 py-3 border-b border-border flex items-center gap-2">
+            <Wallet className="h-4 w-4 text-muted-foreground" />
+            <span className="font-semibold text-foreground">Anticipo</span>
+          </div>
+          
+          <Table>
+            <TableBody>
+              <TableRow className="hover:bg-muted/30">
+                <TableCell className="text-primary font-medium border-l-4 border-l-primary/30 w-1/2">
+                  Importe del contrato
+                </TableCell>
+                <TableCell className="text-foreground text-right font-semibold">
+                  {formatCurrency(anticipoData.importeContrato)}
+                </TableCell>
+              </TableRow>
+              <TableRow className="hover:bg-muted/30">
+                <TableCell className="text-primary font-medium border-l-4 border-l-primary/30">
+                  Importe de anticipo
+                </TableCell>
+                <TableCell className="text-foreground text-right font-semibold">
+                  {formatCurrency(anticipoData.importeAnticipo)}
+                </TableCell>
+              </TableRow>
+              <TableRow className="hover:bg-muted/30">
+                <TableCell className="text-primary font-medium border-l-4 border-l-primary/30">
+                  Porcentaje de anticipo
+                </TableCell>
+                <TableCell className="text-foreground text-right font-semibold">
+                  {anticipoData.porcentajeAnticipo.toFixed(2)}%
+                </TableCell>
+              </TableRow>
+              <TableRow className="hover:bg-muted/30">
+                <TableCell className="text-primary font-medium border-l-4 border-l-primary/30">
+                  Anticipo amortizado
+                </TableCell>
+                <TableCell className="text-red-600 text-right font-semibold">
+                  {formatCurrency(anticipoData.anticipoAmortizado)}
+                </TableCell>
+              </TableRow>
+              <TableRow className="hover:bg-muted/30">
+                <TableCell className="text-primary font-medium border-l-4 border-l-primary/30">
+                  Anticipo por amortizar
+                </TableCell>
+                <TableCell className="text-foreground text-right font-semibold">
+                  {formatCurrency(anticipoData.anticipoPorAmortizar)}
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </div>
+      </div>
+
+      {/* Detail Collapsible Section */}
+      <div className="px-6 pb-6">
+        <Collapsible open={isDetailOpen} onOpenChange={setIsDetailOpen}>
+          <div className="bg-card border border-border rounded-lg overflow-hidden">
+            <CollapsibleTrigger asChild>
+              <button className="w-full bg-muted/80 px-4 py-3 border-b border-border flex items-center justify-between hover:bg-muted transition-colors">
+                <div className="flex items-center gap-2">
+                  <FileSpreadsheet className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-semibold text-foreground">Detalle</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  {isDetailOpen ? (
+                    <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </div>
+              </button>
+            </CollapsibleTrigger>
+            
+            <CollapsibleContent>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/30">
+                      <TableHead className="text-center font-semibold">Concepto</TableHead>
+                      <TableHead className="text-center font-semibold">Unidad</TableHead>
+                      <TableHead className="text-center font-semibold">Cantidad Contrato</TableHead>
+                      <TableHead className="text-center font-semibold">P.U.</TableHead>
+                      <TableHead className="text-center font-semibold">Avance acumulado</TableHead>
+                      <TableHead className="text-center font-semibold">Cantidad real</TableHead>
+                      <TableHead className="text-center font-semibold">Esta estimación</TableHead>
+                      <TableHead className="text-center font-semibold">Avance acumulado</TableHead>
+                      <TableHead className="text-center font-semibold">Por estimar</TableHead>
+                      <TableHead className="text-center font-semibold">Importe Avance Acumulado</TableHead>
+                      <TableHead className="text-center font-semibold">Importe esta</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {/* Demo data row */}
+                    <TableRow className="hover:bg-muted/30">
+                      <TableCell className="text-center">Obra civil</TableCell>
+                      <TableCell className="text-center">m²</TableCell>
+                      <TableCell className="text-center">1,000</TableCell>
+                      <TableCell className="text-center">{formatCurrency(500)}</TableCell>
+                      <TableCell className="text-center">750</TableCell>
+                      <TableCell className="text-center">750</TableCell>
+                      <TableCell className="text-center">100</TableCell>
+                      <TableCell className="text-center">850</TableCell>
+                      <TableCell className="text-center">150</TableCell>
+                      <TableCell className="text-center">{formatCurrency(425000)}</TableCell>
+                      <TableCell className="text-center">{formatCurrency(50000)}</TableCell>
+                    </TableRow>
+                    <TableRow className="hover:bg-muted/30">
+                      <TableCell className="text-center">Instalación eléctrica</TableCell>
+                      <TableCell className="text-center">ml</TableCell>
+                      <TableCell className="text-center">500</TableCell>
+                      <TableCell className="text-center">{formatCurrency(150)}</TableCell>
+                      <TableCell className="text-center">350</TableCell>
+                      <TableCell className="text-center">350</TableCell>
+                      <TableCell className="text-center">50</TableCell>
+                      <TableCell className="text-center">400</TableCell>
+                      <TableCell className="text-center">100</TableCell>
+                      <TableCell className="text-center">{formatCurrency(52500)}</TableCell>
+                      <TableCell className="text-center">{formatCurrency(7500)}</TableCell>
+                    </TableRow>
+                    {!currentEstimation?.estimationText && (
+                      <TableRow>
+                        <TableCell colSpan={11} className="text-center text-muted-foreground py-8">
+                          No hay detalles de conceptos disponibles
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </CollapsibleContent>
+          </div>
+        </Collapsible>
+      </div>
     </div>
   );
 }
