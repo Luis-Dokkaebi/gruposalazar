@@ -2,3 +2,9 @@ project_id = "dihvsbnwgyqckaqiktsx"
 
 [functions.send-invitation-email]
 verify_jwt = true
+
+[functions.send-authorization-email]
+verify_jwt = true
+
+[functions.generate-approval-pdf]
+verify_jwt = true
