@@ -8,11 +8,20 @@ import { Button } from "@/components/ui/button";
 import { UserManagement } from "@/components/UserManagement";
 import { useNavigate } from "react-router-dom";
 import { PageHeader } from "@/components/PageHeader";
+import { OperationalDashboard } from "@/components/OperationalDashboard";
 
 export default function Dashboard() {
   const { currentRole, estimations, emailNotifications } = useEstimationStore();
   const [selectedNotification, setSelectedNotification] = useState<typeof emailNotifications[0] | null>(null);
   const navigate = useNavigate();
+
+  // Redirect to Operational Dashboard for specific roles
+  const operationalRoles = ['residente', 'superintendente', 'lider_proyecto', 'compras', 'finanzas', 'pagos'];
+  if (operationalRoles.includes(currentRole)) {
+    return <OperationalDashboard />;
+  }
+
+  // --- STANDARD DASHBOARD FOR SUPPORT & CONTRACTORS ---
 
   // STRICT FILTERING: Only show what's in user's "cancha" (pending work)
   const getRelevantEstimations = () => {
@@ -25,24 +34,7 @@ export default function Dashboard() {
       return estimations;
     }
 
-    return estimations.filter(est => {
-      switch (currentRole) {
-        case 'residente':
-          return est.status === 'registered';
-        case 'superintendente':
-          return est.status === 'auth_resident';
-        case 'lider_proyecto':
-          return est.status === 'auth_super';
-        case 'compras':
-          return est.status === 'auth_leader';
-        case 'finanzas':
-          return est.status === 'factura_subida';
-        case 'pagos':
-          return est.status === 'validated_finanzas';
-        default:
-          return false;
-      }
-    });
+    return [];
   };
 
   const relevantEstimations = getRelevantEstimations();
