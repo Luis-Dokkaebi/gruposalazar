@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
 import type { Database } from '@/integrations/supabase/types';
 
 type Estimation = Database['public']['Tables']['estimations']['Row'];
@@ -171,6 +172,22 @@ export function useProjectEstimations(projectId: string | null) {
       });
 
     if (historyError) throw historyError;
+
+    // Send authorization email in background
+    try {
+      // We don't await this to avoid blocking the UI response
+      supabase.functions.invoke('send-authorization-email', {
+        body: { estimation_id: estimationId }
+      }).then(({ error }) => {
+        if (error) {
+          console.error('Error sending authorization email:', error);
+          toast.error("No se pudo enviar el correo de autorización");
+        }
+      });
+    } catch (e) {
+      console.error('Failed to trigger email function:', e);
+      toast.error("Error al intentar enviar el correo");
+    }
 
     await fetchEstimations();
     return nextStatus;
