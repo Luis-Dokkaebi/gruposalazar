@@ -138,6 +138,7 @@ export type Database = {
           id: string
           invoice_uploaded_at: string | null
           invoice_url: string | null
+          invoice_xml_url: string | null
           is_leader_active: boolean
           is_resident_active: boolean
           is_superintendent_active: boolean
@@ -168,6 +169,7 @@ export type Database = {
           id?: string
           invoice_uploaded_at?: string | null
           invoice_url?: string | null
+          invoice_xml_url?: string | null
           is_leader_active?: boolean
           is_resident_active?: boolean
           is_superintendent_active?: boolean
@@ -198,6 +200,7 @@ export type Database = {
           id?: string
           invoice_uploaded_at?: string | null
           invoice_url?: string | null
+          invoice_xml_url?: string | null
           is_leader_active?: boolean
           is_resident_active?: boolean
           is_superintendent_active?: boolean
@@ -407,6 +410,51 @@ export type Database = {
           {
             foreignKeyName: "projects_created_by_fkey"
             columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      support_messages: {
+        Row: {
+          created_at: string
+          id: string
+          is_read: boolean
+          message: string
+          project_id: string
+          sender_id: string
+          sender_role: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message: string
+          project_id: string
+          sender_id: string
+          sender_role: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message?: string
+          project_id?: string
+          sender_id?: string
+          sender_role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_messages_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_messages_sender_id_fkey"
+            columns: ["sender_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]

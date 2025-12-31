@@ -30,6 +30,7 @@ export function mapDbEstimationToFrontend(dbEstimation: DbEstimationWithHistory)
     finanzasApprovedAt: dbEstimation.finanzas_approved_at ? new Date(dbEstimation.finanzas_approved_at) : undefined,
     paidAt: dbEstimation.paid_at ? new Date(dbEstimation.paid_at) : undefined,
     invoiceUrl: dbEstimation.invoice_url || undefined,
+    invoiceXmlUrl: est.invoice_xml_url || undefined,
     estimationText: dbEstimation.estimation_text || '',
     amount: Number(dbEstimation.amount),
     history: (dbEstimation.history || []).map(mapDbHistoryToFrontend),

@@ -22,6 +22,7 @@ import { ApprovalSummary } from "./ApprovalSummary";
 import { NotificationManager } from "./NotificationManager";
 import { EstimationRolesConfig } from "./dashboard/EstimationRolesConfig";
 import { RoleInvitationCard } from "./RoleInvitationCard";
+import { InvoiceDownloadSection } from "./InvoiceDownloadSection";
 import type { Database } from "@/integrations/supabase/types";
 
 type AppRole = Database['public']['Enums']['app_role'];
@@ -193,11 +194,8 @@ export function EstimationDetailModal({ estimation, onClose, projectId, onRefres
       setIsProcessing(true);
       try {
         const userName = user?.email || 'Contratista';
-        // In real implementation, upload files to storage first
-        const invoiceUrl = `uploads/${invoicePdfFile.name}`;
-        const xmlUrl = `uploads/${invoiceXmlFile.name}`;
         
-        await uploadInvoice(estimation.id, invoiceUrl, userName);
+        await uploadInvoice(estimation.id, invoicePdfFile, invoiceXmlFile, userName);
         
         toast.success(
           <div className="flex flex-col gap-1">
@@ -476,6 +474,16 @@ export function EstimationDetailModal({ estimation, onClose, projectId, onRefres
                   </h4>
                   <p className="text-sm text-muted-foreground">{estimation.estimationText}</p>
                 </div>
+
+                {/* Invoice Download Section - Visible for Finanzas and Pagos when invoice is uploaded */}
+                {(currentRole === 'finanzas' || currentRole === 'pagos' || currentRole === 'soporte_tecnico') && 
+                  (estimation.status === 'factura_subida' || estimation.status === 'validated_finanzas' || estimation.status === 'paid') && (
+                  <InvoiceDownloadSection
+                    invoicePdfUrl={estimation.invoiceUrl}
+                    invoiceXmlUrl={estimation.invoiceXmlUrl}
+                    folio={estimation.folio}
+                  />
+                )}
 
                 {/* Action Button */}
                 {getActionButton()}
