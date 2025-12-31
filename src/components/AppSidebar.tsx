@@ -1,4 +1,4 @@
-import { LayoutDashboard, FileText, BookOpen, Building2, ShieldCheck, Map } from "lucide-react";
+import { LayoutDashboard, FileText, BookOpen, Building2, ShieldCheck, Map, HelpCircle } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import {
   Sidebar,
@@ -15,6 +15,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { ContractorInstructionsModal } from "@/components/ContractorInstructionsModal";
+import { SupportHelpModal } from "@/components/SupportHelpModal";
 import { useEstimationStore } from "@/lib/estimationStore";
 
 const menuItems = [
@@ -32,10 +33,14 @@ export function AppSidebar() {
   const [isSupport, setIsSupport] = useState(false);
   const [isContractorDb, setIsContractorDb] = useState(false);
   const [showInstructionsModal, setShowInstructionsModal] = useState(false);
+  const [showHelpModal, setShowHelpModal] = useState(false);
   const collapsed = state === "collapsed";
 
   // Show instructions if demo role is contratista OR if user has contratista role in DB
   const showContractorInstructions = currentRole === 'contratista' || isContractorDb;
+  
+  // Show help button for all roles EXCEPT soporte_tecnico
+  const showHelpButton = currentRole !== 'soporte_tecnico';
 
   useEffect(() => {
     const checkRole = async () => {
@@ -69,6 +74,16 @@ export function AppSidebar() {
       action: () => setShowInstructionsModal(true),
       icon: Map,
       className: "text-amber-500 hover:text-amber-600 dark:text-amber-400 dark:hover:text-amber-300"
+    });
+  }
+
+  // Add Help button for all roles except soporte_tecnico
+  if (showHelpButton) {
+    items.push({
+      title: "AYUDA",
+      action: () => setShowHelpModal(true),
+      icon: HelpCircle,
+      className: "text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300"
     });
   }
 
@@ -127,6 +142,11 @@ export function AppSidebar() {
       <ContractorInstructionsModal
         open={showInstructionsModal}
         onOpenChange={setShowInstructionsModal}
+      />
+
+      <SupportHelpModal
+        open={showHelpModal}
+        onOpenChange={setShowHelpModal}
       />
     </>
   );

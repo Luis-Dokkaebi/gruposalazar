@@ -67,6 +67,7 @@ export interface Estimation {
   finanzasApprovedAt?: Date;
   paidAt?: Date;
   invoiceUrl?: string;
+  invoiceXmlUrl?: string;
   estimationText: string;
   amount: number;
   history: ApprovalHistoryEntry[];

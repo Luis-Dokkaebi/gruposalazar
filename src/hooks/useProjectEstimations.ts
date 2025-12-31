@@ -193,13 +193,44 @@ export function useProjectEstimations(projectId: string | null) {
     return nextStatus;
   };
 
-  const uploadInvoice = async (estimationId: string, invoiceUrl: string, userName: string) => {
-    if (!user) throw new Error('No authenticated user');
+  const uploadInvoice = async (
+    estimationId: string, 
+    pdfFile: File, 
+    xmlFile: File, 
+    userName: string
+  ) => {
+    if (!user || !projectId) throw new Error('No authenticated user or project');
+
+    // Upload PDF file to storage
+    const pdfPath = `${projectId}/${estimationId}/factura_${Date.now()}.pdf`;
+    const { error: pdfUploadError } = await supabase.storage
+      .from('estimations')
+      .upload(pdfPath, pdfFile, { upsert: true });
+
+    if (pdfUploadError) throw pdfUploadError;
+
+    // Upload XML file to storage
+    const xmlPath = `${projectId}/${estimationId}/factura_${Date.now()}.xml`;
+    const { error: xmlUploadError } = await supabase.storage
+      .from('estimations')
+      .upload(xmlPath, xmlFile, { upsert: true });
+
+    if (xmlUploadError) throw xmlUploadError;
+
+    // Get public URLs
+    const { data: pdfUrlData } = supabase.storage
+      .from('estimations')
+      .getPublicUrl(pdfPath);
+
+    const { data: xmlUrlData } = supabase.storage
+      .from('estimations')
+      .getPublicUrl(xmlPath);
 
     const { error: updateError } = await supabase
       .from('estimations')
       .update({
-        invoice_url: invoiceUrl,
+        invoice_url: pdfUrlData.publicUrl,
+        invoice_xml_url: xmlUrlData.publicUrl,
         invoice_uploaded_at: new Date().toISOString(),
         status: 'factura_subida' as EstimationStatus
       })
