@@ -15,6 +15,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { ContractorInstructionsModal } from "@/components/ContractorInstructionsModal";
+import { useEstimationStore } from "@/lib/estimationStore";
 
 const menuItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
@@ -27,10 +28,14 @@ const menuItems = [
 export function AppSidebar() {
   const { state } = useSidebar();
   const { user } = useAuth();
+  const { currentRole } = useEstimationStore();
   const [isSupport, setIsSupport] = useState(false);
-  const [isContractor, setIsContractor] = useState(false);
+  const [isContractorDb, setIsContractorDb] = useState(false);
   const [showInstructionsModal, setShowInstructionsModal] = useState(false);
   const collapsed = state === "collapsed";
+
+  // Show instructions if demo role is contratista OR if user has contratista role in DB
+  const showContractorInstructions = currentRole === 'contratista' || isContractorDb;
 
   useEffect(() => {
     const checkRole = async () => {
@@ -50,15 +55,15 @@ export function AppSidebar() {
         .eq('user_id', user.id)
         .eq('role', 'contratista')
         .maybeSingle();
-      setIsContractor(!!contractorData);
+      setIsContractorDb(!!contractorData);
     };
     checkRole();
   }, [user]);
 
   const items: any[] = [...menuItems];
 
-  // Add Instructions for Contractor
-  if (isContractor) {
+  // Add Instructions for Contractor (demo role or real DB role)
+  if (showContractorInstructions) {
     items.push({
       title: "INSTRUCCIONES",
       action: () => setShowInstructionsModal(true),
