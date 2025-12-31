@@ -64,7 +64,8 @@ export function EstimationDetailModal({ estimation, onClose, projectId, onRefres
   const { user } = useAuth();
   const { approveEstimation, uploadInvoice } = useProjectEstimations(projectId || null);
   
-  const [invoiceFile, setInvoiceFile] = useState<File | null>(null);
+  const [invoicePdfFile, setInvoicePdfFile] = useState<File | null>(null);
+  const [invoiceXmlFile, setInvoiceXmlFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [activeTab, setActiveTab] = useState("details");
 
@@ -176,21 +177,33 @@ export function EstimationDetailModal({ estimation, onClose, projectId, onRefres
   };
 
   const handleInvoiceUpload = async () => {
-    if (!invoiceFile) return;
+    if (!invoicePdfFile || !invoiceXmlFile) {
+      toast.error("Debes subir tanto el PDF como el XML de la factura");
+      return;
+    }
+    
+    // Validate XML file extension
+    if (!invoiceXmlFile.name.toLowerCase().endsWith('.xml')) {
+      toast.error("El archivo XML debe tener extensión .xml");
+      return;
+    }
     
     // If we have a projectId, use the database upload
     if (projectId && estimation.id) {
       setIsProcessing(true);
       try {
         const userName = user?.email || 'Contratista';
-        // In real implementation, upload file to storage first
-        const invoiceUrl = `uploads/${invoiceFile.name}`;
+        // In real implementation, upload files to storage first
+        const invoiceUrl = `uploads/${invoicePdfFile.name}`;
+        const xmlUrl = `uploads/${invoiceXmlFile.name}`;
         
         await uploadInvoice(estimation.id, invoiceUrl, userName);
         
         toast.success(
           <div className="flex flex-col gap-1">
             <div className="font-bold">✅ Factura Cargada Exitosamente</div>
+            <div className="text-sm">PDF: {invoicePdfFile.name}</div>
+            <div className="text-sm">XML: {invoiceXmlFile.name}</div>
             <div className="text-sm">Correo de notificación enviado a:</div>
             <div className="text-sm font-semibold text-primary">finanzas@gruposalazar.com</div>
           </div>,
@@ -211,6 +224,8 @@ export function EstimationDetailModal({ estimation, onClose, projectId, onRefres
     toast.success(
       <div className="flex flex-col gap-1">
         <div className="font-bold">✅ Factura Cargada Exitosamente</div>
+        <div className="text-sm">PDF: {invoicePdfFile.name}</div>
+        <div className="text-sm">XML: {invoiceXmlFile.name}</div>
         <div className="text-sm">Correo de notificación enviado a:</div>
         <div className="text-sm font-semibold text-primary">finanzas@gruposalazar.com</div>
       </div>,
@@ -227,19 +242,47 @@ export function EstimationDetailModal({ estimation, onClose, projectId, onRefres
     if (currentRole === "contratista" && estimation.status === "validated_compras") {
       return (
         <div className="space-y-4">
-          <div>
-            <Label htmlFor="invoice">Subir Factura (XML/PDF)</Label>
-            <Input
-              id="invoice"
-              type="file"
-              accept=".xml,.pdf"
-              onChange={(e) => setInvoiceFile(e.target.files?.[0] || null)}
-              className="mt-2"
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="invoice-pdf" className="flex items-center gap-2">
+                <FileText className="h-4 w-4 text-red-500" />
+                Factura PDF
+              </Label>
+              <Input
+                id="invoice-pdf"
+                type="file"
+                accept=".pdf"
+                onChange={(e) => setInvoicePdfFile(e.target.files?.[0] || null)}
+                className="mt-2"
+              />
+              {invoicePdfFile && (
+                <p className="text-xs text-muted-foreground mt-1 truncate">
+                  {invoicePdfFile.name}
+                </p>
+              )}
+            </div>
+            <div>
+              <Label htmlFor="invoice-xml" className="flex items-center gap-2">
+                <FileText className="h-4 w-4 text-amber-500" />
+                Factura XML
+              </Label>
+              <Input
+                id="invoice-xml"
+                type="file"
+                accept=".xml"
+                onChange={(e) => setInvoiceXmlFile(e.target.files?.[0] || null)}
+                className="mt-2"
+              />
+              {invoiceXmlFile && (
+                <p className="text-xs text-muted-foreground mt-1 truncate">
+                  {invoiceXmlFile.name}
+                </p>
+              )}
+            </div>
           </div>
           <Button
             onClick={handleInvoiceUpload}
-            disabled={!invoiceFile || isProcessing}
+            disabled={!invoicePdfFile || !invoiceXmlFile || isProcessing}
             className="w-full"
           >
             {isProcessing ? (
@@ -247,7 +290,7 @@ export function EstimationDetailModal({ estimation, onClose, projectId, onRefres
             ) : (
               <Upload className="mr-2 h-4 w-4" />
             )}
-            {isProcessing ? 'Procesando...' : 'Subir Factura'}
+            {isProcessing ? 'Procesando...' : 'Subir Factura (PDF + XML)'}
           </Button>
         </div>
       );
