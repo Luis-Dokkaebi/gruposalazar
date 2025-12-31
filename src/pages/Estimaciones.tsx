@@ -95,7 +95,8 @@ export default function Estimaciones() {
     let statusCategory = "other";
     if (est.status === "registered") statusCategory = "resident";
     else if (est.status === "auth_resident") statusCategory = "superintendent";
-    else if (["auth_super", "auth_leader", "validated_compras", "factura_subida", "validated_finanzas", "paid"].includes(est.status)) {
+    else if (est.status === "paid") statusCategory = "paid";
+    else if (["auth_super", "auth_leader", "validated_compras", "factura_subida", "validated_finanzas"].includes(est.status)) {
       statusCategory = "authorized";
     }
 
@@ -373,11 +374,12 @@ export default function Estimaciones() {
       <div className="space-y-4">
         {/* Quick Filters */}
         <Tabs defaultValue="all" value={activeFilter} onValueChange={setActiveFilter} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 lg:w-[800px]">
+          <TabsList className="grid w-full grid-cols-3 md:grid-cols-5 lg:w-[900px]">
             <TabsTrigger value="all">Todas</TabsTrigger>
             <TabsTrigger value="resident">En Revisión: Residente</TabsTrigger>
             <TabsTrigger value="superintendent">En Revisión: Superintendente</TabsTrigger>
             <TabsTrigger value="authorized">Autorizadas</TabsTrigger>
+            <TabsTrigger value="paid">Pagadas</TabsTrigger>
           </TabsList>
         </Tabs>
 
