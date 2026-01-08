@@ -484,7 +484,7 @@ export default function Aprobaciones() {
         </div>
       </div>
 
-      {/* Detail Collapsible Section */}
+      {/* Detail Collapsible Section - Estimación Table */}
       <div className="px-6 pb-6">
         <Collapsible open={isDetailOpen} onOpenChange={setIsDetailOpen}>
           <div className="bg-card border border-border rounded-lg overflow-hidden">
@@ -492,7 +492,7 @@ export default function Aprobaciones() {
               <button className="w-full bg-muted/80 px-4 py-3 border-b border-border flex items-center justify-between hover:bg-muted transition-colors">
                 <div className="flex items-center gap-2">
                   <FileSpreadsheet className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-semibold text-foreground">Detalle</span>
+                  <span className="font-semibold text-foreground">Estimación</span>
                 </div>
                 <div className="flex items-center gap-2">
                   {isDetailOpen ? (
@@ -508,57 +508,127 @@ export default function Aprobaciones() {
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow className="bg-muted/30">
-                      <TableHead className="text-center font-semibold">Concepto</TableHead>
-                      <TableHead className="text-center font-semibold">Unidad</TableHead>
-                      <TableHead className="text-center font-semibold">Cantidad Contrato</TableHead>
-                      <TableHead className="text-center font-semibold">P.U.</TableHead>
-                      <TableHead className="text-center font-semibold">Avance acumulado</TableHead>
-                      <TableHead className="text-center font-semibold">Cantidad real</TableHead>
-                      <TableHead className="text-center font-semibold">Esta estimación</TableHead>
-                      <TableHead className="text-center font-semibold">Avance acumulado</TableHead>
-                      <TableHead className="text-center font-semibold">Por estimar</TableHead>
-                      <TableHead className="text-center font-semibold">Importe Avance Acumulado</TableHead>
-                      <TableHead className="text-center font-semibold">Importe esta</TableHead>
+                    <TableRow className="bg-primary/10">
+                      <TableHead className="text-left font-semibold text-foreground w-48"></TableHead>
+                      <TableHead className="text-center font-semibold text-primary">
+                        Importe avance<br/>acumulado anterior
+                      </TableHead>
+                      <TableHead className="text-center font-semibold text-primary">
+                        Importe esta<br/>estimación
+                      </TableHead>
+                      <TableHead className="text-center font-semibold text-primary">
+                        Importe avance<br/>acumulado
+                      </TableHead>
+                      <TableHead className="text-center font-semibold text-primary">
+                        Importe por estimar
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {/* Demo data row */}
-                    <TableRow className="hover:bg-muted/30">
-                      <TableCell className="text-center">Obra civil</TableCell>
-                      <TableCell className="text-center">m²</TableCell>
-                      <TableCell className="text-center">1,000</TableCell>
-                      <TableCell className="text-center">{formatCurrency(500)}</TableCell>
-                      <TableCell className="text-center">750</TableCell>
-                      <TableCell className="text-center">750</TableCell>
-                      <TableCell className="text-center">100</TableCell>
-                      <TableCell className="text-center">850</TableCell>
-                      <TableCell className="text-center">150</TableCell>
-                      <TableCell className="text-center">{formatCurrency(425000)}</TableCell>
-                      <TableCell className="text-center">{formatCurrency(50000)}</TableCell>
+                    {/* Total esta estimación */}
+                    <TableRow className="hover:bg-muted/30 border-b">
+                      <TableCell className="text-foreground font-medium border-l-4 border-l-primary/30">
+                        Total esta<br/>estimación
+                      </TableCell>
+                      <TableCell className="text-center text-foreground font-semibold">
+                        {formatCurrency((currentEstimation?.amount || 0) * 4.8)}
+                      </TableCell>
+                      <TableCell className="text-center text-foreground font-semibold">
+                        {formatCurrency(currentEstimation?.amount || 0)}
+                      </TableCell>
+                      <TableCell className="text-center text-foreground font-semibold">
+                        {formatCurrency((currentEstimation?.amount || 0) * 5.8)}
+                      </TableCell>
+                      <TableCell className="text-center text-red-600 font-semibold">
+                        {formatCurrency(-((currentEstimation?.amount || 0) * 0.9))}
+                      </TableCell>
                     </TableRow>
-                    <TableRow className="hover:bg-muted/30">
-                      <TableCell className="text-center">Instalación eléctrica</TableCell>
-                      <TableCell className="text-center">ml</TableCell>
-                      <TableCell className="text-center">500</TableCell>
-                      <TableCell className="text-center">{formatCurrency(150)}</TableCell>
-                      <TableCell className="text-center">350</TableCell>
-                      <TableCell className="text-center">350</TableCell>
-                      <TableCell className="text-center">50</TableCell>
-                      <TableCell className="text-center">400</TableCell>
-                      <TableCell className="text-center">100</TableCell>
-                      <TableCell className="text-center">{formatCurrency(52500)}</TableCell>
-                      <TableCell className="text-center">{formatCurrency(7500)}</TableCell>
+                    
+                    {/* Amortización */}
+                    <TableRow className="hover:bg-muted/30 border-b">
+                      <TableCell className="text-foreground font-medium border-l-4 border-l-primary/30">
+                        Amortización
+                      </TableCell>
+                      <TableCell className="text-center text-foreground font-semibold">
+                        {formatCurrency(-((currentEstimation?.amount || 0) * 1.4))}
+                      </TableCell>
+                      <TableCell className="text-center text-foreground font-semibold">
+                        {formatCurrency((currentEstimation?.amount || 0) * 0.7)}
+                      </TableCell>
+                      <TableCell className="text-center text-foreground font-semibold">
+                        {formatCurrency((currentEstimation?.amount || 0) * 4.1)}
+                      </TableCell>
+                      <TableCell className="text-center text-foreground font-semibold">
+                        {formatCurrency((currentEstimation?.amount || 0) * 2.1)}
+                      </TableCell>
                     </TableRow>
-                    {!currentEstimation?.estimationText && (
-                      <TableRow>
-                        <TableCell colSpan={11} className="text-center text-muted-foreground py-8">
-                          No hay detalles de conceptos disponibles
-                        </TableCell>
-                      </TableRow>
-                    )}
+                    
+                    {/* Subtotal */}
+                    <TableRow className="hover:bg-muted/30 border-b bg-muted/20">
+                      <TableCell className="text-foreground font-semibold border-l-4 border-l-primary/30">
+                        Subtotal
+                      </TableCell>
+                      <TableCell className="text-center text-foreground font-semibold">
+                        {formatCurrency((currentEstimation?.amount || 0) * 3.4)}
+                      </TableCell>
+                      <TableCell className="text-center text-foreground font-semibold">
+                        {formatCurrency((currentEstimation?.amount || 0) * 0.11)}
+                      </TableCell>
+                      <TableCell className="text-center text-foreground font-semibold">
+                        {formatCurrency((currentEstimation?.amount || 0) * 0.65)}
+                      </TableCell>
+                      <TableCell className="text-center text-foreground font-semibold">
+                        {formatCurrency((currentEstimation?.amount || 0) * 0.33)}
+                      </TableCell>
+                    </TableRow>
+                    
+                    {/* 16% IVA */}
+                    <TableRow className="hover:bg-muted/30 border-b">
+                      <TableCell className="text-foreground font-medium border-l-4 border-l-primary/30">
+                        16% IVA
+                      </TableCell>
+                      <TableCell className="text-center text-foreground font-semibold">
+                        {formatCurrency((currentEstimation?.amount || 0) * 0.54)}
+                      </TableCell>
+                      <TableCell className="text-center text-foreground font-semibold">
+                        
+                      </TableCell>
+                      <TableCell className="text-center text-foreground font-semibold">
+                        
+                      </TableCell>
+                      <TableCell className="text-center text-foreground font-semibold">
+                        
+                      </TableCell>
+                    </TableRow>
+                    
+                    {/* Total a facturar */}
+                    <TableRow className="hover:bg-muted/30 bg-muted/30">
+                      <TableCell className="text-foreground font-bold border-l-4 border-l-primary">
+                        Total a facturar
+                      </TableCell>
+                      <TableCell className="text-center text-foreground font-bold text-lg">
+                        {formatCurrency((currentEstimation?.amount || 0) * 0.83)}
+                      </TableCell>
+                      <TableCell className="text-center text-foreground font-semibold">
+                        
+                      </TableCell>
+                      <TableCell className="text-center text-foreground font-semibold">
+                        
+                      </TableCell>
+                      <TableCell className="text-center text-foreground font-semibold">
+                        
+                      </TableCell>
+                    </TableRow>
                   </TableBody>
                 </Table>
+              </div>
+              
+              {/* Facturar a section */}
+              <div className="px-4 py-4 border-t border-border bg-muted/20">
+                <p className="text-foreground italic">
+                  <span className="font-semibold">Facturar a:</span>{" "}
+                  <span className="uppercase">{currentEstimation?.contractorName || "N/A"}</span>
+                </p>
               </div>
             </CollapsibleContent>
           </div>
