@@ -563,6 +563,71 @@ export default function Aprobaciones() {
             </CollapsibleContent>
           </div>
         </Collapsible>
+
+        {/* Estimación Summary Table */}
+        <div className="mt-4 bg-card border border-border rounded-lg overflow-hidden">
+          <div className="bg-primary/10 px-4 py-3 border-b border-border">
+            <span className="font-semibold text-foreground">Estimación</span>
+          </div>
+          
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-primary/5">
+                  <TableHead className="text-left font-semibold w-1/5"></TableHead>
+                  <TableHead className="text-center font-semibold text-primary">Importe avance acumulado anterior</TableHead>
+                  <TableHead className="text-center font-semibold text-primary">Importe esta estimación</TableHead>
+                  <TableHead className="text-center font-semibold text-primary">Importe avance acumulado</TableHead>
+                  <TableHead className="text-center font-semibold text-primary">Importe por estimar</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <TableRow className="hover:bg-muted/30">
+                  <TableCell className="font-medium text-muted-foreground">Total esta estimación</TableCell>
+                  <TableCell className="text-center">{formatCurrency(150018.08)}</TableCell>
+                  <TableCell className="text-center">{formatCurrency(31841.18)}</TableCell>
+                  <TableCell className="text-center">{formatCurrency(181859.26)}</TableCell>
+                  <TableCell className="text-center">{formatCurrency(93137.99)}</TableCell>
+                </TableRow>
+                <TableRow className="hover:bg-muted/30">
+                  <TableCell className="font-medium text-muted-foreground">Amortización</TableCell>
+                  <TableCell className="text-center text-red-600">{formatCurrency(-45005.43)}</TableCell>
+                  <TableCell className="text-center text-red-600">{formatCurrency(-9552.35)}</TableCell>
+                  <TableCell className="text-center text-red-600">{formatCurrency(-54557.78)}</TableCell>
+                  <TableCell className="text-center text-red-600">{formatCurrency(-27941.40)}</TableCell>
+                </TableRow>
+                <TableRow className="hover:bg-muted/30 bg-muted/20">
+                  <TableCell className="font-medium text-muted-foreground">Subtotal</TableCell>
+                  <TableCell className="text-center font-semibold">{formatCurrency(105012.65)}</TableCell>
+                  <TableCell className="text-center font-semibold">{formatCurrency(22288.83)}</TableCell>
+                  <TableCell className="text-center font-semibold">{formatCurrency(127301.48)}</TableCell>
+                  <TableCell className="text-center font-semibold">{formatCurrency(65196.59)}</TableCell>
+                </TableRow>
+                <TableRow className="hover:bg-muted/30">
+                  <TableCell className="font-medium text-muted-foreground">16% IVA</TableCell>
+                  <TableCell className="text-center">{formatCurrency(16802.02)}</TableCell>
+                  <TableCell className="text-center">{formatCurrency(3566.21)}</TableCell>
+                  <TableCell className="text-center">{formatCurrency(20368.24)}</TableCell>
+                  <TableCell className="text-center">{formatCurrency(10431.45)}</TableCell>
+                </TableRow>
+                <TableRow className="bg-primary/10 hover:bg-primary/15">
+                  <TableCell className="font-bold text-foreground">Total a facturar</TableCell>
+                  <TableCell className="text-center"></TableCell>
+                  <TableCell className="text-center font-bold text-lg">{formatCurrency(25855.04)}</TableCell>
+                  <TableCell className="text-center"></TableCell>
+                  <TableCell className="text-center"></TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* Facturar a */}
+          <div className="px-4 py-3 border-t border-border bg-muted/30">
+            <p className="text-sm text-center text-muted-foreground italic">
+              Facturar a: <span className="font-semibold text-foreground">CONSTRUCTORA RAMHER DE MEXICO SA DE CV</span>
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );
