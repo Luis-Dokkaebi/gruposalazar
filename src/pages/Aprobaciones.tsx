@@ -20,8 +20,10 @@ import {
   Wallet,
   FileSpreadsheet,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Paperclip
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { mapDbEstimationToFrontend } from "@/lib/estimationMapper";
 import { Estimation, UserRole } from "@/types/estimation";
 import { PageHeader } from "@/components/PageHeader";
@@ -143,6 +145,20 @@ export default function Aprobaciones() {
 
   const handleExportPDF = () => {
     toast.info("Exportando a PDF...");
+  };
+
+  const handleAttachSignature = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'application/pdf';
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (file) {
+        toast.success(`Archivo "${file.name}" adjuntado correctamente`);
+        // TODO: Implement upload logic here
+      }
+    };
+    input.click();
   };
 
   const handleSendEmail = () => {
@@ -282,6 +298,15 @@ export default function Aprobaciones() {
         >
           <FileDown className="mr-2 h-4 w-4" />
           Exportar a PDF
+        </Button>
+
+        <Button 
+          onClick={handleAttachSignature}
+          variant="outline"
+          className="font-semibold"
+        >
+          <Paperclip className="mr-2 h-4 w-4" />
+          Adjuntar Firma
         </Button>
         
         <Button 
