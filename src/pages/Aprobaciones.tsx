@@ -260,13 +260,79 @@ export default function Aprobaciones() {
   const contract = contracts.find(c => c.id === currentEstimation?.contractId);
   const config = statusConfig[currentEstimation?.status || 'registered'];
 
+  // Demo data for detalle section (conceptos)
+  const detalleData = [
+    {
+      concepto: "Obra civil",
+      unidad: "m²",
+      cantidadContrato: 1000,
+      pu: 500,
+      avanceAcumuladoAnt: 750,
+      cantidadReal: 750,
+      estaEstimacion: 100,
+      avanceAcumulado: 850,
+      porEstimar: 150,
+      importeAvanceAcumulado: 425000,
+      importeEsta: 50000,
+    },
+    {
+      concepto: "Instalación eléctrica",
+      unidad: "ml",
+      cantidadContrato: 500,
+      pu: 150,
+      avanceAcumuladoAnt: 350,
+      cantidadReal: 350,
+      estaEstimacion: 50,
+      avanceAcumulado: 400,
+      porEstimar: 100,
+      importeAvanceAcumulado: 52500,
+      importeEsta: 7500,
+    },
+  ];
+
+  // Calculate totals from detalle
+  const totalImporteAvanceAcumuladoAnt = detalleData.reduce((sum, row) => sum + row.importeAvanceAcumulado, 0);
+  const totalImporteEstaEstimacion = detalleData.reduce((sum, row) => sum + row.importeEsta, 0);
+  const importeContrato = currentEstimation?.amount || detalleData.reduce((sum, row) => sum + (row.cantidadContrato * row.pu), 0);
+
   // Demo data for anticipo section
+  const porcentajeAnticipo = 30.00;
   const anticipoData = {
-    importeContrato: currentEstimation?.amount || 0,
-    importeAnticipo: (currentEstimation?.amount || 0) * 0.3,
-    porcentajeAnticipo: 30.00,
-    anticipoAmortizado: -((currentEstimation?.amount || 0) * 0.25),
-    anticipoPorAmortizar: (currentEstimation?.amount || 0) * 0.05,
+    importeContrato: importeContrato,
+    importeAnticipo: importeContrato * (porcentajeAnticipo / 100),
+    porcentajeAnticipo: porcentajeAnticipo,
+    anticipoAmortizado: -(importeContrato * 0.25),
+    anticipoPorAmortizar: importeContrato * 0.05,
+  };
+
+  // Calculate estimacion summary based on anticipo and detalle
+  const amortizacionPorcentaje = porcentajeAnticipo / 100;
+  const estimacionData = {
+    totalEsta: {
+      avanceAcumuladoAnt: totalImporteAvanceAcumuladoAnt,
+      estaEstimacion: totalImporteEstaEstimacion,
+      avanceAcumulado: totalImporteAvanceAcumuladoAnt + totalImporteEstaEstimacion,
+      porEstimar: importeContrato - (totalImporteAvanceAcumuladoAnt + totalImporteEstaEstimacion),
+    },
+    amortizacion: {
+      avanceAcumuladoAnt: -(totalImporteAvanceAcumuladoAnt * amortizacionPorcentaje),
+      estaEstimacion: -(totalImporteEstaEstimacion * amortizacionPorcentaje),
+      avanceAcumulado: -((totalImporteAvanceAcumuladoAnt + totalImporteEstaEstimacion) * amortizacionPorcentaje),
+      porEstimar: -((importeContrato - (totalImporteAvanceAcumuladoAnt + totalImporteEstaEstimacion)) * amortizacionPorcentaje),
+    },
+    subtotal: {
+      avanceAcumuladoAnt: totalImporteAvanceAcumuladoAnt * (1 - amortizacionPorcentaje),
+      estaEstimacion: totalImporteEstaEstimacion * (1 - amortizacionPorcentaje),
+      avanceAcumulado: (totalImporteAvanceAcumuladoAnt + totalImporteEstaEstimacion) * (1 - amortizacionPorcentaje),
+      porEstimar: (importeContrato - (totalImporteAvanceAcumuladoAnt + totalImporteEstaEstimacion)) * (1 - amortizacionPorcentaje),
+    },
+    iva: {
+      avanceAcumuladoAnt: totalImporteAvanceAcumuladoAnt * (1 - amortizacionPorcentaje) * 0.16,
+      estaEstimacion: totalImporteEstaEstimacion * (1 - amortizacionPorcentaje) * 0.16,
+      avanceAcumulado: (totalImporteAvanceAcumuladoAnt + totalImporteEstaEstimacion) * (1 - amortizacionPorcentaje) * 0.16,
+      porEstimar: (importeContrato - (totalImporteAvanceAcumuladoAnt + totalImporteEstaEstimacion)) * (1 - amortizacionPorcentaje) * 0.16,
+    },
+    totalFacturar: totalImporteEstaEstimacion * (1 - amortizacionPorcentaje) * 1.16,
   };
 
   return (
@@ -523,34 +589,22 @@ export default function Aprobaciones() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {/* Demo data row */}
-                    <TableRow className="hover:bg-muted/30">
-                      <TableCell className="text-center">Obra civil</TableCell>
-                      <TableCell className="text-center">m²</TableCell>
-                      <TableCell className="text-center">1,000</TableCell>
-                      <TableCell className="text-center">{formatCurrency(500)}</TableCell>
-                      <TableCell className="text-center">750</TableCell>
-                      <TableCell className="text-center">750</TableCell>
-                      <TableCell className="text-center">100</TableCell>
-                      <TableCell className="text-center">850</TableCell>
-                      <TableCell className="text-center">150</TableCell>
-                      <TableCell className="text-center">{formatCurrency(425000)}</TableCell>
-                      <TableCell className="text-center">{formatCurrency(50000)}</TableCell>
-                    </TableRow>
-                    <TableRow className="hover:bg-muted/30">
-                      <TableCell className="text-center">Instalación eléctrica</TableCell>
-                      <TableCell className="text-center">ml</TableCell>
-                      <TableCell className="text-center">500</TableCell>
-                      <TableCell className="text-center">{formatCurrency(150)}</TableCell>
-                      <TableCell className="text-center">350</TableCell>
-                      <TableCell className="text-center">350</TableCell>
-                      <TableCell className="text-center">50</TableCell>
-                      <TableCell className="text-center">400</TableCell>
-                      <TableCell className="text-center">100</TableCell>
-                      <TableCell className="text-center">{formatCurrency(52500)}</TableCell>
-                      <TableCell className="text-center">{formatCurrency(7500)}</TableCell>
-                    </TableRow>
-                    {!currentEstimation?.estimationText && (
+                    {detalleData.map((row, index) => (
+                      <TableRow key={index} className="hover:bg-muted/30">
+                        <TableCell className="text-center">{row.concepto}</TableCell>
+                        <TableCell className="text-center">{row.unidad}</TableCell>
+                        <TableCell className="text-center">{row.cantidadContrato.toLocaleString()}</TableCell>
+                        <TableCell className="text-center">{formatCurrency(row.pu)}</TableCell>
+                        <TableCell className="text-center">{row.avanceAcumuladoAnt}</TableCell>
+                        <TableCell className="text-center">{row.cantidadReal}</TableCell>
+                        <TableCell className="text-center">{row.estaEstimacion}</TableCell>
+                        <TableCell className="text-center">{row.avanceAcumulado}</TableCell>
+                        <TableCell className="text-center">{row.porEstimar}</TableCell>
+                        <TableCell className="text-center">{formatCurrency(row.importeAvanceAcumulado)}</TableCell>
+                        <TableCell className="text-center">{formatCurrency(row.importeEsta)}</TableCell>
+                      </TableRow>
+                    ))}
+                    {detalleData.length === 0 && (
                       <TableRow>
                         <TableCell colSpan={11} className="text-center text-muted-foreground py-8">
                           No hay detalles de conceptos disponibles
@@ -584,36 +638,36 @@ export default function Aprobaciones() {
               <TableBody>
                 <TableRow className="hover:bg-muted/30">
                   <TableCell className="font-medium text-muted-foreground">Total esta estimación</TableCell>
-                  <TableCell className="text-center">{formatCurrency(150018.08)}</TableCell>
-                  <TableCell className="text-center">{formatCurrency(31841.18)}</TableCell>
-                  <TableCell className="text-center">{formatCurrency(181859.26)}</TableCell>
-                  <TableCell className="text-center">{formatCurrency(93137.99)}</TableCell>
+                  <TableCell className="text-center">{formatCurrency(estimacionData.totalEsta.avanceAcumuladoAnt)}</TableCell>
+                  <TableCell className="text-center">{formatCurrency(estimacionData.totalEsta.estaEstimacion)}</TableCell>
+                  <TableCell className="text-center">{formatCurrency(estimacionData.totalEsta.avanceAcumulado)}</TableCell>
+                  <TableCell className="text-center">{formatCurrency(estimacionData.totalEsta.porEstimar)}</TableCell>
                 </TableRow>
                 <TableRow className="hover:bg-muted/30">
                   <TableCell className="font-medium text-muted-foreground">Amortización</TableCell>
-                  <TableCell className="text-center text-red-600">{formatCurrency(-45005.43)}</TableCell>
-                  <TableCell className="text-center text-red-600">{formatCurrency(-9552.35)}</TableCell>
-                  <TableCell className="text-center text-red-600">{formatCurrency(-54557.78)}</TableCell>
-                  <TableCell className="text-center text-red-600">{formatCurrency(-27941.40)}</TableCell>
+                  <TableCell className="text-center text-red-600">{formatCurrency(estimacionData.amortizacion.avanceAcumuladoAnt)}</TableCell>
+                  <TableCell className="text-center text-red-600">{formatCurrency(estimacionData.amortizacion.estaEstimacion)}</TableCell>
+                  <TableCell className="text-center text-red-600">{formatCurrency(estimacionData.amortizacion.avanceAcumulado)}</TableCell>
+                  <TableCell className="text-center text-red-600">{formatCurrency(estimacionData.amortizacion.porEstimar)}</TableCell>
                 </TableRow>
                 <TableRow className="hover:bg-muted/30 bg-muted/20">
                   <TableCell className="font-medium text-muted-foreground">Subtotal</TableCell>
-                  <TableCell className="text-center font-semibold">{formatCurrency(105012.65)}</TableCell>
-                  <TableCell className="text-center font-semibold">{formatCurrency(22288.83)}</TableCell>
-                  <TableCell className="text-center font-semibold">{formatCurrency(127301.48)}</TableCell>
-                  <TableCell className="text-center font-semibold">{formatCurrency(65196.59)}</TableCell>
+                  <TableCell className="text-center font-semibold">{formatCurrency(estimacionData.subtotal.avanceAcumuladoAnt)}</TableCell>
+                  <TableCell className="text-center font-semibold">{formatCurrency(estimacionData.subtotal.estaEstimacion)}</TableCell>
+                  <TableCell className="text-center font-semibold">{formatCurrency(estimacionData.subtotal.avanceAcumulado)}</TableCell>
+                  <TableCell className="text-center font-semibold">{formatCurrency(estimacionData.subtotal.porEstimar)}</TableCell>
                 </TableRow>
                 <TableRow className="hover:bg-muted/30">
                   <TableCell className="font-medium text-muted-foreground">16% IVA</TableCell>
-                  <TableCell className="text-center">{formatCurrency(16802.02)}</TableCell>
-                  <TableCell className="text-center">{formatCurrency(3566.21)}</TableCell>
-                  <TableCell className="text-center">{formatCurrency(20368.24)}</TableCell>
-                  <TableCell className="text-center">{formatCurrency(10431.45)}</TableCell>
+                  <TableCell className="text-center">{formatCurrency(estimacionData.iva.avanceAcumuladoAnt)}</TableCell>
+                  <TableCell className="text-center">{formatCurrency(estimacionData.iva.estaEstimacion)}</TableCell>
+                  <TableCell className="text-center">{formatCurrency(estimacionData.iva.avanceAcumulado)}</TableCell>
+                  <TableCell className="text-center">{formatCurrency(estimacionData.iva.porEstimar)}</TableCell>
                 </TableRow>
                 <TableRow className="bg-primary/10 hover:bg-primary/15">
                   <TableCell className="font-bold text-foreground">Total a facturar</TableCell>
                   <TableCell className="text-center"></TableCell>
-                  <TableCell className="text-center font-bold text-lg">{formatCurrency(25855.04)}</TableCell>
+                  <TableCell className="text-center font-bold text-lg">{formatCurrency(estimacionData.totalFacturar)}</TableCell>
                   <TableCell className="text-center"></TableCell>
                   <TableCell className="text-center"></TableCell>
                 </TableRow>
