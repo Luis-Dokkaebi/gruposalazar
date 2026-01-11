@@ -133,31 +133,69 @@ const handler = async (req: Request): Promise<Response> => {
 
     // 3. Download PDF using file path (not URL)
     let attachments: any[] = [];
-    if (estimation.pdf_url) {
+
+    // Helper function to attach file
+    const attachFile = async (urlOrPath: string, defaultName: string) => {
       try {
         // Extract file path from URL or use directly if it's already a path
-        const filePath = estimation.pdf_url.includes('/')
-          ? estimation.pdf_url.split('/').pop()
-          : estimation.pdf_url;
+        // If it's a public URL, we might need to be careful, but the storage download expects a path.
+        // Assuming urlOrPath is stored as "path/to/file" or "file.pdf" (if root) or public URL ending in file name.
+        // If it is a full public URL, getting the path inside the bucket is tricky without parsing.
+        // However, the current codebase seems to store:
+        // - pdf_url: "filename.pdf" (root) in createEstimation
+        // - invoice_url: "publicUrl" in uploadInvoice. This is a problem for download().
+
+        let storagePath = urlOrPath;
+
+        // If it looks like a URL, try to extract the path after the bucket name ("estimations")
+        if (urlOrPath.startsWith('http')) {
+             const urlParts = urlOrPath.split('/estimations/');
+             if (urlParts.length > 1) {
+                 storagePath = urlParts[1]; // "project/id/file.pdf"
+             }
+        }
 
         const { data: fileData, error: fileError } = await supabaseAdmin.storage
           .from("estimations")
-          .download(filePath || estimation.pdf_url);
+          .download(storagePath);
 
-        if (fileError) throw fileError;
+        if (fileError) {
+             console.error(`Error downloading ${defaultName}:`, fileError);
+             return;
+        }
 
         if (fileData) {
           const arrayBuffer = await fileData.arrayBuffer();
           const buffer = new Uint8Array(arrayBuffer);
 
+          // Determine filename from path
+          const filename = storagePath.split('/').pop() || defaultName;
+
           attachments.push({
-            filename: filePath || "estimacion.pdf",
+            filename: filename,
             content: Buffer.from(buffer),
           });
         }
       } catch (err) {
-        console.error("Error downloading PDF:", err);
+        console.error(`Error processing attachment ${defaultName}:`, err);
       }
+    };
+
+    // Attach Evidence PDF
+    if (estimation.pdf_url) {
+        await attachFile(estimation.pdf_url, "estimacion.pdf");
+    }
+
+    // Attach Invoice PDF if available and relevant
+    // Statuses where invoice should be present: factura_subida, validated_finanzas, paid
+    const invoiceStatuses = ['factura_subida', 'validated_finanzas', 'paid'];
+    if (invoiceStatuses.includes(estimation.status) && estimation.invoice_url) {
+        await attachFile(estimation.invoice_url, "factura.pdf");
+    }
+
+    // Attach Invoice XML if available
+    if (invoiceStatuses.includes(estimation.status) && estimation.invoice_xml_url) {
+        await attachFile(estimation.invoice_xml_url, "factura.xml");
     }
 
     // 4. Determine Recipients
@@ -219,6 +257,21 @@ const handler = async (req: Request): Promise<Response> => {
           if (m.profiles?.email) recipients.push(m.profiles.email);
         });
       }
+    }
+
+    // Always include 'soporte_tecnico' users for global oversight
+    try {
+        const { data: supportMembers } = await supabaseAdmin
+          .from('project_members')
+          .select('profiles(email)')
+          .eq('project_id', estimation.project_id)
+          .eq('role', 'soporte_tecnico');
+
+        supportMembers?.forEach((m: any) => {
+          if (m.profiles?.email) recipients.push(m.profiles.email);
+        });
+    } catch (e) {
+        console.error("Error fetching support members:", e);
     }
 
     const uniqueRecipients = [...new Set(recipients)];
