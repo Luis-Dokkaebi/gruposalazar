@@ -82,10 +82,17 @@ export function useUserProjects() {
              membershipMap.get(m.project_id)!.push(m.role);
         });
 
-        projectList = (allProjects || []).map((p: any) => ({
-            ...p,
-            roles: membershipMap.get(p.id) || ['soporte_tecnico'] // Default to support if no other role
-        }));
+        projectList = (allProjects || []).map((p: any) => {
+            const projectRoles = membershipMap.get(p.id) || [];
+            // Ensure support role is present if user is support/admin
+            if (!projectRoles.includes('soporte_tecnico')) {
+                projectRoles.push('soporte_tecnico');
+            }
+            return {
+                ...p,
+                roles: projectRoles
+            };
+        });
 
       } else {
         // Normal flow: Get all projects where user is a member
