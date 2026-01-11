@@ -21,6 +21,7 @@ import SupportDashboard from "./pages/SupportDashboard";
 import { SupportRoute } from "./components/SupportRoute";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
+import { useEffect } from "react";
 
 const queryClient = new QueryClient();
 
@@ -138,20 +139,40 @@ const AppRoutes = () => (
   </Routes>
 );
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <div className="antialiased min-h-screen bg-background font-sans text-foreground selection:bg-primary selection:text-primary-foreground">
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <AuthProvider>
-            <AppRoutes />
-          </AuthProvider>
-        </BrowserRouter>
-      </div>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+const App = () => {
+  useEffect(() => {
+    const handleInteraction = () => {
+      // Request fullscreen on first click
+      if (document.documentElement.requestFullscreen && !document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch((err) => {
+          console.log("Error attempting to enable full-screen mode:", err.message);
+        });
+      }
+    };
+
+    // Listen for the first click to trigger fullscreen
+    document.addEventListener("click", handleInteraction, { once: true });
+
+    return () => {
+      document.removeEventListener("click", handleInteraction);
+    };
+  }, []);
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <div className="antialiased min-h-screen bg-background font-sans text-foreground selection:bg-primary selection:text-primary-foreground">
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <AuthProvider>
+              <AppRoutes />
+            </AuthProvider>
+          </BrowserRouter>
+        </div>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;
