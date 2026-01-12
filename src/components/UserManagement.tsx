@@ -51,9 +51,11 @@ export function UserManagement() {
   };
 
   const handleDelete = (user: Collaborator) => {
-    const isConfirmed = window.confirm(
-      `¿Estás seguro de que deseas eliminar a ${user.fullName || 'este usuario'}? Esta acción no se puede deshacer.`
-    );
+    const message = user.type === 'system'
+      ? `¿Estás seguro de que deseas eliminar a ${user.fullName || 'este usuario'} del sistema?\n\nADVERTENCIA: Esta acción eliminará al usuario de TODOS los proyectos asignados.`
+      : `¿Estás seguro de que deseas eliminar a ${user.fullName || 'este usuario'}? Esta acción no se puede deshacer.`;
+
+    const isConfirmed = window.confirm(message);
     if (isConfirmed) {
       deleteCollaborator(user.id, user.type);
     }
