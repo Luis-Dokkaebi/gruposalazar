@@ -9,13 +9,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Table,
   TableBody,
   TableCell,
@@ -57,7 +50,6 @@ import {
 import { cn } from "@/lib/utils";
 
 type Contract = Database['public']['Tables']['contracts']['Row'];
-type CostCenter = Database['public']['Tables']['cost_centers']['Row'];
 
 export default function Estimaciones() {
   const { currentRole, emailNotifications } = useEstimationStore();
@@ -67,7 +59,6 @@ export default function Estimaciones() {
   const [selectedNotification, setSelectedNotification] = useState<typeof emailNotifications[0] | null>(null);
   const [selectedEstimation, setSelectedEstimation] = useState<Estimation | null>(null);
   const [contracts, setContracts] = useState<Contract[]>([]);
-  const [costCenters, setCostCenters] = useState<CostCenter[]>([]);
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -82,25 +73,19 @@ export default function Estimaciones() {
 
   const [formData, setFormData] = useState({
     contractId: "",
-    costCenterId: "",
     contractorName: "",
     estimationText: "",
     amount: "",
     pdfFile: null as File | null,
   });
 
-  // Fetch contracts and cost centers for the current project
+  // Fetch contracts for the current project
   useEffect(() => {
     if (!currentProjectId) return;
 
     const fetchProjectData = async () => {
-      const [contractsRes, costCentersRes] = await Promise.all([
-        supabase.from('contracts').select('*').eq('project_id', currentProjectId),
-        supabase.from('cost_centers').select('*').eq('project_id', currentProjectId),
-      ]);
-
-      if (contractsRes.data) setContracts(contractsRes.data);
-      if (costCentersRes.data) setCostCenters(costCentersRes.data);
+      const { data } = await supabase.from('contracts').select('*').eq('project_id', currentProjectId);
+      if (data) setContracts(data);
     };
 
     fetchProjectData();
@@ -188,18 +173,6 @@ export default function Estimaciones() {
              setFormData(prev => ({ ...prev, contractId: "" }));
           }
 
-          // Try to match cost center if available
-          if (parsed.costCenterId) {
-            // Find cost center in list that matches name or code
-            const matchCC = costCenters.find(cc =>
-              cc.name.toLowerCase().includes(parsed.costCenterId!.toLowerCase()) ||
-              cc.code.toLowerCase().includes(parsed.costCenterId!.toLowerCase())
-            );
-            if (matchCC) {
-               setFormData(prev => ({ ...prev, costCenterId: matchCC.id }));
-            }
-          }
-
         } catch (err) {
           console.error("Document Parsing error:", err);
           toast.warning("No se pudieron extraer datos automáticos. Por favor llena los campos manualmente.");
@@ -214,7 +187,7 @@ export default function Estimaciones() {
     e.preventDefault();
     
     // Check if we have a contract ID OR if we have a search term (new contract)
-    if ((!formData.contractId && !contractSearch) || !formData.costCenterId || !formData.contractorName || !formData.estimationText || !formData.amount) {
+    if ((!formData.contractId && !contractSearch) || !formData.contractorName || !formData.estimationText || !formData.amount) {
       toast.error("Por favor completa todos los campos requeridos.");
       return;
     }
@@ -276,7 +249,7 @@ export default function Estimaciones() {
         amount: parseFloat(formData.amount),
         estimation_text: formData.estimationText,
         contract_id: finalContractId,
-        cost_center_id: formData.costCenterId || undefined,
+        cost_center_id: undefined, // Explicitly undefined
         pdf_url: publicUrl,
         pdf_details: pdfDetails,
       });
@@ -287,7 +260,6 @@ export default function Estimaciones() {
       // Reset form
       setFormData({
         contractId: "",
-        costCenterId: "",
         contractorName: "",
         estimationText: "",
         amount: "",
@@ -470,25 +442,6 @@ export default function Estimaciones() {
                     <p className="text-[0.8rem] text-muted-foreground">
                         Puedes escribir el nombre del archivo o seleccionar uno existente.
                     </p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="costCenter">Centro de Costos *</Label>
-                    <Select
-                      value={formData.costCenterId}
-                      onValueChange={(value) => setFormData({ ...formData, costCenterId: value })}
-                    >
-                      <SelectTrigger id="costCenter" className="bg-background">
-                        <SelectValue placeholder="Selecciona un centro de costos" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-popover">
-                        {costCenters.map((center) => (
-                          <SelectItem key={center.id} value={center.id}>
-                            {center.name} ({center.code})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
                   </div>
 
                   <div className="space-y-2">
