@@ -9,13 +9,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Table,
   TableBody,
   TableCell,
@@ -32,7 +25,7 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Upload, Plus, Loader2, AlertCircle, Eye, Pencil } from "lucide-react";
+import { Upload, Plus, Loader2, AlertCircle, Eye, Pencil, Check, ChevronsUpDown } from "lucide-react";
 import { toast } from "sonner";
 import { EmailModal } from "@/components/EmailModal";
 import { EstimationDetailModal } from "@/components/EstimationDetailModal";
@@ -41,9 +34,22 @@ import { parseDocument } from "@/lib/documentParser";
 import type { Database } from "@/integrations/supabase/types";
 import { Estimation } from "@/types/estimation";
 import { PageHeader } from "@/components/PageHeader";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 
 type Contract = Database['public']['Tables']['contracts']['Row'];
-type CostCenter = Database['public']['Tables']['cost_centers']['Row'];
 
 export default function Estimaciones() {
   const { currentRole, emailNotifications } = useEstimationStore();
@@ -53,7 +59,6 @@ export default function Estimaciones() {
   const [selectedNotification, setSelectedNotification] = useState<typeof emailNotifications[0] | null>(null);
   const [selectedEstimation, setSelectedEstimation] = useState<Estimation | null>(null);
   const [contracts, setContracts] = useState<Contract[]>([]);
-  const [costCenters, setCostCenters] = useState<CostCenter[]>([]);
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -63,27 +68,24 @@ export default function Estimaciones() {
   // Filter state: 'all', 'resident', 'superintendent', 'authorized'
   const [activeFilter, setActiveFilter] = useState("all");
 
+  const [openContract, setOpenContract] = useState(false);
+  const [contractSearch, setContractSearch] = useState("");
+
   const [formData, setFormData] = useState({
     contractId: "",
-    costCenterId: "",
     contractorName: "",
     estimationText: "",
     amount: "",
     pdfFile: null as File | null,
   });
 
-  // Fetch contracts and cost centers for the current project
+  // Fetch contracts for the current project
   useEffect(() => {
     if (!currentProjectId) return;
 
     const fetchProjectData = async () => {
-      const [contractsRes, costCentersRes] = await Promise.all([
-        supabase.from('contracts').select('*').eq('project_id', currentProjectId),
-        supabase.from('cost_centers').select('*').eq('project_id', currentProjectId),
-      ]);
-
-      if (contractsRes.data) setContracts(contractsRes.data);
-      if (costCentersRes.data) setCostCenters(costCentersRes.data);
+      const { data } = await supabase.from('contracts').select('*').eq('project_id', currentProjectId);
+      if (data) setContracts(data);
     };
 
     fetchProjectData();
@@ -132,6 +134,10 @@ export default function Estimaciones() {
       const file = e.target.files[0];
       setFormData(prev => ({ ...prev, pdfFile: file }));
 
+      // Extract filename without extension for contract search
+      const fileNameWithoutExt = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
+      setContractSearch(fileNameWithoutExt);
+
       // Attempt to parse Document (PDF or Image)
       if (file.type === 'application/pdf' || file.type.startsWith('image/')) {
         setIsParsing(true);
@@ -146,25 +152,25 @@ export default function Estimaciones() {
           setPdfDetails(parsed.details);
           toast.success("Datos extraídos del documento correctamente");
 
-          // Try to match contract number if available
+          // Try to match contract number if available or use filename
+          let match = null;
+
           if (parsed.contractId) {
-            // Find contract in contracts list that matches
-             const match = contracts.find(c => c.name.includes(parsed.contractId!) || (c.description && c.description.includes(parsed.contractId!)));
-             if (match) {
-                setFormData(prev => ({ ...prev, contractId: match.id }));
-             }
+            match = contracts.find(c => c.name.includes(parsed.contractId!) || (c.description && c.description.includes(parsed.contractId!)));
           }
 
-          // Try to match cost center if available
-          if (parsed.costCenterId) {
-            // Find cost center in list that matches name or code
-            const matchCC = costCenters.find(cc =>
-              cc.name.toLowerCase().includes(parsed.costCenterId!.toLowerCase()) ||
-              cc.code.toLowerCase().includes(parsed.costCenterId!.toLowerCase())
-            );
-            if (matchCC) {
-               setFormData(prev => ({ ...prev, costCenterId: matchCC.id }));
-            }
+          if (!match) {
+             // Try matching against filename
+             match = contracts.find(c => fileNameWithoutExt.includes(c.name));
+          }
+
+          if (match) {
+             setFormData(prev => ({ ...prev, contractId: match!.id }));
+             setContractSearch(match.name); // Normalize search to matched contract
+          } else {
+             // If no match, we keep the filename in contractSearch but clear the ID
+             // This indicates a potential "New Contract"
+             setFormData(prev => ({ ...prev, contractId: "" }));
           }
 
         } catch (err) {
@@ -180,7 +186,8 @@ export default function Estimaciones() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.contractId || !formData.costCenterId || !formData.contractorName || !formData.estimationText || !formData.amount) {
+    // Check if we have a contract ID OR if we have a search term (new contract)
+    if ((!formData.contractId && !contractSearch) || !formData.contractorName || !formData.estimationText || !formData.amount) {
       toast.error("Por favor completa todos los campos requeridos.");
       return;
     }
@@ -198,6 +205,35 @@ export default function Estimaciones() {
     setIsSubmitting(true);
 
     try {
+      let finalContractId = formData.contractId;
+
+      // Logic to create a new contract if ID is missing but we have a search term
+      if (!finalContractId && contractSearch) {
+         // Check if it already exists by name (case insensitive)
+         const existing = contracts.find(c => c.name.toLowerCase() === contractSearch.toLowerCase());
+         if (existing) {
+             finalContractId = existing.id;
+         } else {
+             // Create new contract
+             const { data: newContract, error: createError } = await supabase
+                 .from('contracts')
+                 .insert({
+                     project_id: currentProjectId,
+                     name: contractSearch,
+                     description: 'Contrato creado automáticamente desde estimación'
+                 })
+                 .select()
+                 .single();
+
+             if (createError) throw createError;
+             if (newContract) {
+                 finalContractId = newContract.id;
+                 setContracts(prev => [...prev, newContract]);
+                 toast.info(`Contrato "${contractSearch}" creado automáticamente.`);
+             }
+         }
+      }
+
       // 1. Upload File
       const publicUrl = await uploadFile(formData.pdfFile);
 
@@ -212,8 +248,8 @@ export default function Estimaciones() {
         contractor_name: formData.contractorName,
         amount: parseFloat(formData.amount),
         estimation_text: formData.estimationText,
-        contract_id: formData.contractId || undefined,
-        cost_center_id: formData.costCenterId || undefined,
+        contract_id: finalContractId,
+        cost_center_id: undefined, // Explicitly undefined
         pdf_url: publicUrl,
         pdf_details: pdfDetails,
       });
@@ -224,12 +260,12 @@ export default function Estimaciones() {
       // Reset form
       setFormData({
         contractId: "",
-        costCenterId: "",
         contractorName: "",
         estimationText: "",
         amount: "",
         pdfFile: null,
       });
+      setContractSearch("");
       setPdfDetails(undefined);
     } catch (err: any) {
       console.error(err);
@@ -308,7 +344,7 @@ export default function Estimaciones() {
                 <div className="space-y-2 bg-slate-50 p-4 rounded-md border border-slate-200">
                   <Label htmlFor="pdf" className="text-base font-semibold">Cargar Evidencia (PDF/Imagen) *</Label>
                   <p className="text-sm text-muted-foreground mb-2">
-                    Carga el PDF de la estimación para autocompletar los campos.
+                    Carga el PDF de la estimación para autocompletar los campos y sugerir el contrato.
                   </p>
                   <div className="flex items-center gap-2">
                     <Input
@@ -333,42 +369,79 @@ export default function Estimaciones() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
+                  <div className="space-y-2 flex flex-col">
                     <Label htmlFor="contract">Contrato *</Label>
-                    <Select
-                      value={formData.contractId}
-                      onValueChange={(value) => setFormData({ ...formData, contractId: value })}
-                    >
-                      <SelectTrigger id="contract" className="bg-background">
-                        <SelectValue placeholder="Selecciona un contrato" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-popover">
-                        {contracts.map((contract) => (
-                          <SelectItem key={contract.id} value={contract.id}>
-                            {contract.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="costCenter">Centro de Costos *</Label>
-                    <Select
-                      value={formData.costCenterId}
-                      onValueChange={(value) => setFormData({ ...formData, costCenterId: value })}
-                    >
-                      <SelectTrigger id="costCenter" className="bg-background">
-                        <SelectValue placeholder="Selecciona un centro de costos" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-popover">
-                        {costCenters.map((center) => (
-                          <SelectItem key={center.id} value={center.id}>
-                            {center.name} ({center.code})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Popover open={openContract} onOpenChange={setOpenContract}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          id="contract"
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={openContract}
+                          className="w-full justify-between bg-background"
+                        >
+                          {formData.contractId
+                            ? contracts.find((contract) => contract.id === formData.contractId)?.name
+                            : (contractSearch || "Selecciona o busca un contrato...")}
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[400px] p-0" align="start">
+                        <Command>
+                          <CommandInput
+                            placeholder="Buscar contrato..."
+                            value={contractSearch}
+                            onValueChange={setContractSearch}
+                          />
+                          <CommandList>
+                            <CommandEmpty className="py-6 text-center text-sm">
+                               {contractSearch ? (
+                                   <div className="flex flex-col items-center gap-2">
+                                       <p>No se encontró "{contractSearch}"</p>
+                                       <Button
+                                           size="sm"
+                                           variant="secondary"
+                                           onClick={() => {
+                                               // We keep contractSearch as is, but verify ID is cleared
+                                               setFormData(prev => ({ ...prev, contractId: "" }));
+                                               setOpenContract(false);
+                                           }}
+                                       >
+                                           Usar "{contractSearch}" como nuevo
+                                       </Button>
+                                   </div>
+                               ) : (
+                                   "No se encontraron contratos."
+                               )}
+                            </CommandEmpty>
+                            <CommandGroup>
+                              {contracts.map((contract) => (
+                                <CommandItem
+                                  key={contract.id}
+                                  value={contract.name}
+                                  onSelect={(currentValue) => {
+                                    setFormData(prev => ({ ...prev, contractId: contract.id }));
+                                    setContractSearch(contract.name);
+                                    setOpenContract(false);
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      formData.contractId === contract.id ? "opacity-100" : "opacity-0"
+                                    )}
+                                  />
+                                  {contract.name}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                    <p className="text-[0.8rem] text-muted-foreground">
+                        Puedes escribir el nombre del archivo o seleccionar uno existente.
+                    </p>
                   </div>
 
                   <div className="space-y-2">
