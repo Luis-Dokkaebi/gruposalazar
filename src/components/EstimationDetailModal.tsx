@@ -195,6 +195,7 @@ export function EstimationDetailModal({ estimation, onClose, projectId, onRefres
       try {
         const userName = user?.email || 'Contratista';
         
+        // Uploads files to Supabase storage and updates the estimation record
         await uploadInvoice(estimation.id, invoicePdfFile, invoiceXmlFile, userName);
         
         toast.success(
