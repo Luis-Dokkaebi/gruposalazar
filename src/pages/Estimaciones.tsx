@@ -37,6 +37,7 @@ import { toast } from "sonner";
 import { EmailModal } from "@/components/EmailModal";
 import { EstimationDetailModal } from "@/components/EstimationDetailModal";
 import { mapDbEstimationToFrontend } from "@/lib/estimationMapper";
+import { parseEstimationPDF } from "@/lib/pdfParser";
 import type { Database } from "@/integrations/supabase/types";
 import { Estimation } from "@/types/estimation";
 import { PageHeader } from "@/components/PageHeader";
@@ -56,6 +57,8 @@ export default function Estimaciones() {
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isParsing, setIsParsing] = useState(false);
+  const [pdfDetails, setPdfDetails] = useState<Record<string, any> | undefined>(undefined);
   
   // Filter state: 'all', 'resident', 'superintendent', 'authorized'
   const [activeFilter, setActiveFilter] = useState("all");
@@ -124,9 +127,40 @@ export default function Estimaciones() {
     return filePath;
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setFormData({ ...formData, pdfFile: e.target.files[0] });
+      const file = e.target.files[0];
+      setFormData(prev => ({ ...prev, pdfFile: file }));
+
+      // Attempt to parse PDF
+      if (file.type === 'application/pdf') {
+        setIsParsing(true);
+        try {
+          const parsed = await parseEstimationPDF(file);
+          setFormData(prev => ({
+            ...prev,
+            contractorName: parsed.contractorName || prev.contractorName,
+            amount: parsed.amount ? parsed.amount.toString() : prev.amount,
+            estimationText: parsed.estimationText || prev.estimationText,
+          }));
+          setPdfDetails(parsed.details);
+          toast.success("Datos extraídos del PDF correctamente");
+
+          // Try to match contract number if available
+          if (parsed.contractId) {
+            // Find contract in contracts list that matches
+             const match = contracts.find(c => c.name.includes(parsed.contractId!) || (c.description && c.description.includes(parsed.contractId!)));
+             if (match) {
+                setFormData(prev => ({ ...prev, contractId: match.id }));
+             }
+          }
+        } catch (err) {
+          console.error("PDF Parsing error:", err);
+          toast.warning("No se pudieron extraer datos automáticos del PDF. Por favor llena los campos manualmente.");
+        } finally {
+          setIsParsing(false);
+        }
+      }
     }
   };
 
@@ -168,6 +202,7 @@ export default function Estimaciones() {
         contract_id: formData.contractId || undefined,
         cost_center_id: formData.costCenterId || undefined,
         pdf_url: publicUrl,
+        pdf_details: pdfDetails,
       });
 
       toast.success("Estimación creada exitosamente");
@@ -182,6 +217,7 @@ export default function Estimaciones() {
         amount: "",
         pdfFile: null,
       });
+      setPdfDetails(undefined);
     } catch (err: any) {
       console.error(err);
       toast.error(`Error: ${err.message}`);
@@ -255,6 +291,34 @@ export default function Estimaciones() {
                 </DialogHeader>
 
                 <form onSubmit={handleSubmit} className="space-y-6 mt-4">
+
+                <div className="space-y-2 bg-slate-50 p-4 rounded-md border border-slate-200">
+                  <Label htmlFor="pdf" className="text-base font-semibold">Cargar Evidencia (PDF/Imagen) *</Label>
+                  <p className="text-sm text-muted-foreground mb-2">
+                    Carga el PDF de la estimación para autocompletar los campos.
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id="pdf"
+                      type="file"
+                      accept=".pdf,image/*"
+                      onChange={handleFileChange}
+                      className="bg-background"
+                    />
+                  </div>
+                  {isParsing && (
+                     <div className="flex items-center gap-2 text-sm text-blue-600 mt-2">
+                       <Loader2 className="h-3 w-3 animate-spin" />
+                       Analizando documento...
+                     </div>
+                  )}
+                  {formData.pdfFile && !isParsing && (
+                    <p className="text-sm text-green-600 mt-1">
+                      Archivo: {formData.pdfFile.name}
+                    </p>
+                  )}
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <Label htmlFor="contract">Contrato *</Label>
@@ -319,23 +383,6 @@ export default function Estimaciones() {
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="pdf">Carga de Evidencia (PDF/Imagen) *</Label>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      id="pdf"
-                      type="file"
-                      accept=".pdf,image/*"
-                      onChange={handleFileChange}
-                      className="bg-background"
-                    />
-                  </div>
-                  {formData.pdfFile && (
-                    <p className="text-sm text-green-600 mt-1">
-                      Archivo: {formData.pdfFile.name}
-                    </p>
-                  )}
-                </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="description">Descripción *</Label>

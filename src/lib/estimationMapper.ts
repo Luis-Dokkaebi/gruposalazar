@@ -47,6 +47,7 @@ export function mapDbEstimationToFrontend(dbEstimation: DbEstimationWithHistory)
     is_resident_active: est.is_resident_active ?? true,
     is_superintendent_active: est.is_superintendent_active ?? true,
     is_leader_active: est.is_leader_active ?? true,
+    pdfDetails: est.pdf_details || undefined,
   };
 }
 
