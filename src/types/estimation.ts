@@ -84,6 +84,8 @@ export interface Estimation {
   is_resident_active: boolean;
   is_superintendent_active: boolean;
   is_leader_active: boolean;
+  // Parsed PDF details
+  pdfDetails?: Record<string, any>;
 }
 
 export interface EmailNotification {

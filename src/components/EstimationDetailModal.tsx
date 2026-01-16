@@ -339,13 +339,21 @@ export function EstimationDetailModal({ estimation, onClose, projectId, onRefres
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1">
-           {showConfigTab && (
-            <TabsList className="mb-4">
+           {(showConfigTab || estimation.pdfDetails) && (
+            <TabsList className="mb-4 w-full justify-start overflow-x-auto">
               <TabsTrigger value="details">Detalles</TabsTrigger>
-              <TabsTrigger value="config" className="flex items-center gap-2">
-                <Settings2 className="h-4 w-4" />
-                Configuración
-              </TabsTrigger>
+              {estimation.pdfDetails && (
+                <TabsTrigger value="pdf_details" className="flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  Datos del PDF
+                </TabsTrigger>
+              )}
+              {showConfigTab && (
+                <TabsTrigger value="config" className="flex items-center gap-2">
+                  <Settings2 className="h-4 w-4" />
+                  Configuración
+                </TabsTrigger>
+              )}
             </TabsList>
            )}
 
@@ -510,6 +518,88 @@ export function EstimationDetailModal({ estimation, onClose, projectId, onRefres
                 onUpdate={onRefresh}
                 onClose={() => setActiveTab("details")}
               />
+            </TabsContent>
+          )}
+
+          {estimation.pdfDetails && (
+            <TabsContent value="pdf_details" className="space-y-6">
+              <div className="bg-muted/30 p-4 rounded-lg border">
+                <h3 className="font-bold text-lg mb-4 text-primary">Datos del Contrato</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                  <div className="flex flex-col">
+                    <span className="text-muted-foreground">Proyecto</span>
+                    <span className="font-medium">{estimation.pdfDetails.contractData?.project || '-'}</span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-muted-foreground">Proveedor</span>
+                    <span className="font-medium">{estimation.pdfDetails.contractData?.provider || '-'}</span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-muted-foreground">Número de Contrato</span>
+                    <span className="font-medium">{estimation.pdfDetails.contractData?.contractNumber || '-'}</span>
+                  </div>
+                   <div className="flex flex-col">
+                    <span className="text-muted-foreground">Número de Pedido</span>
+                    <span className="font-medium">{estimation.pdfDetails.contractData?.orderNumber || '-'}</span>
+                  </div>
+                   <div className="flex flex-col">
+                    <span className="text-muted-foreground">Importe de Pedido</span>
+                    <span className="font-medium">{estimation.pdfDetails.contractData?.orderAmount || '-'}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-muted/30 p-4 rounded-lg border">
+                <h3 className="font-bold text-lg mb-4 text-primary">Datos de Anticipo</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                  <div className="flex flex-col">
+                    <span className="text-muted-foreground">Importe del Contrato</span>
+                    <span className="font-medium">{estimation.pdfDetails.advanceData?.contractAmount || '-'}</span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-muted-foreground">Importe de Anticipo</span>
+                    <span className="font-medium">{estimation.pdfDetails.advanceData?.advanceAmount || '-'}</span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-muted-foreground">Porcentaje de Anticipo</span>
+                    <span className="font-medium">{estimation.pdfDetails.advanceData?.advancePercent || '-'}</span>
+                  </div>
+                   <div className="flex flex-col">
+                    <span className="text-muted-foreground">Anticipo Amortizado</span>
+                    <span className="font-medium">{estimation.pdfDetails.advanceData?.amortized || '-'}</span>
+                  </div>
+                   <div className="flex flex-col">
+                    <span className="text-muted-foreground">Anticipo Por Amortizar</span>
+                    <span className="font-medium">{estimation.pdfDetails.advanceData?.toAmortize || '-'}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-muted/30 p-4 rounded-lg border">
+                <h3 className="font-bold text-lg mb-4 text-primary">Resumen de Estimación</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                  <div className="flex flex-col">
+                    <span className="text-muted-foreground">Total esta Estimación</span>
+                    <span className="font-medium">{estimation.pdfDetails.summary?.totalThisEstimation || '-'}</span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-muted-foreground">Amortización</span>
+                    <span className="font-medium text-red-600">{estimation.pdfDetails.summary?.amortization || '-'}</span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-muted-foreground">Subtotal</span>
+                    <span className="font-medium">{estimation.pdfDetails.summary?.subtotal || '-'}</span>
+                  </div>
+                   <div className="flex flex-col">
+                    <span className="text-muted-foreground">IVA (16%)</span>
+                    <span className="font-medium">{estimation.pdfDetails.summary?.iva || '-'}</span>
+                  </div>
+                   <div className="flex flex-col">
+                    <span className="text-muted-foreground font-bold">Total a Facturar</span>
+                    <span className="font-bold text-lg text-primary">{estimation.pdfDetails.summary?.totalToInvoice || '-'}</span>
+                  </div>
+                </div>
+              </div>
             </TabsContent>
           )}
         </Tabs>
