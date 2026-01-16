@@ -37,7 +37,7 @@ import { toast } from "sonner";
 import { EmailModal } from "@/components/EmailModal";
 import { EstimationDetailModal } from "@/components/EstimationDetailModal";
 import { mapDbEstimationToFrontend } from "@/lib/estimationMapper";
-import { parseEstimationPDF } from "@/lib/pdfParser";
+import { parseDocument } from "@/lib/documentParser";
 import type { Database } from "@/integrations/supabase/types";
 import { Estimation } from "@/types/estimation";
 import { PageHeader } from "@/components/PageHeader";
@@ -132,11 +132,11 @@ export default function Estimaciones() {
       const file = e.target.files[0];
       setFormData(prev => ({ ...prev, pdfFile: file }));
 
-      // Attempt to parse PDF
-      if (file.type === 'application/pdf') {
+      // Attempt to parse Document (PDF or Image)
+      if (file.type === 'application/pdf' || file.type.startsWith('image/')) {
         setIsParsing(true);
         try {
-          const parsed = await parseEstimationPDF(file);
+          const parsed = await parseDocument(file);
           setFormData(prev => ({
             ...prev,
             contractorName: parsed.contractorName || prev.contractorName,
@@ -144,7 +144,7 @@ export default function Estimaciones() {
             estimationText: parsed.estimationText || prev.estimationText,
           }));
           setPdfDetails(parsed.details);
-          toast.success("Datos extraídos del PDF correctamente");
+          toast.success("Datos extraídos del documento correctamente");
 
           // Try to match contract number if available
           if (parsed.contractId) {
@@ -154,9 +154,22 @@ export default function Estimaciones() {
                 setFormData(prev => ({ ...prev, contractId: match.id }));
              }
           }
+
+          // Try to match cost center if available
+          if (parsed.costCenterId) {
+            // Find cost center in list that matches name or code
+            const matchCC = costCenters.find(cc =>
+              cc.name.toLowerCase().includes(parsed.costCenterId!.toLowerCase()) ||
+              cc.code.toLowerCase().includes(parsed.costCenterId!.toLowerCase())
+            );
+            if (matchCC) {
+               setFormData(prev => ({ ...prev, costCenterId: matchCC.id }));
+            }
+          }
+
         } catch (err) {
-          console.error("PDF Parsing error:", err);
-          toast.warning("No se pudieron extraer datos automáticos del PDF. Por favor llena los campos manualmente.");
+          console.error("Document Parsing error:", err);
+          toast.warning("No se pudieron extraer datos automáticos. Por favor llena los campos manualmente.");
         } finally {
           setIsParsing(false);
         }
