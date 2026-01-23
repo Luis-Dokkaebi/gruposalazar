@@ -25,10 +25,11 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Upload, Plus, Loader2, AlertCircle, Eye, Pencil, Check, ChevronsUpDown } from "lucide-react";
+import { Upload, Plus, Loader2, AlertCircle, Eye, Pencil, Check, ChevronsUpDown, FileInput } from "lucide-react";
 import { toast } from "sonner";
 import { EmailModal } from "@/components/EmailModal";
 import { EstimationDetailModal } from "@/components/EstimationDetailModal";
+import { AnalystEstimationForm } from "@/components/estimations/AnalystEstimationForm";
 import { mapDbEstimationToFrontend } from "@/lib/estimationMapper";
 import { parseDocument } from "@/lib/documentParser";
 import type { Database } from "@/integrations/supabase/types";
@@ -58,6 +59,7 @@ export default function Estimaciones() {
   
   const [selectedNotification, setSelectedNotification] = useState<typeof emailNotifications[0] | null>(null);
   const [selectedEstimation, setSelectedEstimation] = useState<Estimation | null>(null);
+  const [isAnalystProcessing, setIsAnalystProcessing] = useState(false);
   const [contracts, setContracts] = useState<Contract[]>([]);
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -65,7 +67,7 @@ export default function Estimaciones() {
   const [isParsing, setIsParsing] = useState(false);
   const [pdfDetails, setPdfDetails] = useState<Record<string, any> | undefined>(undefined);
   
-  // Filter state: 'all', 'resident', 'superintendent', 'authorized'
+  // Filter state: 'all', 'submitted', 'resident', 'superintendent', 'authorized'
   const [activeFilter, setActiveFilter] = useState("all");
 
   const [openContract, setOpenContract] = useState(false);
@@ -78,6 +80,13 @@ export default function Estimaciones() {
     amount: "",
     pdfFile: null as File | null,
   });
+
+  // Set default filter for Analyst
+  useEffect(() => {
+    if (currentRole === 'analista_estimaciones') {
+      setActiveFilter("submitted");
+    }
+  }, [currentRole]);
 
   // Fetch contracts for the current project
   useEffect(() => {
@@ -96,9 +105,11 @@ export default function Estimaciones() {
 
   // --- Filter Logic ---
   const filteredEstimations = estimations.filter((est) => {
-    // Status mapping for filters
     let statusCategory = "other";
-    if (est.status === "registered") statusCategory = "resident";
+
+    // Status mapping
+    if (est.status === "submitted_by_contractor") statusCategory = "submitted";
+    else if (est.status === "registered") statusCategory = "resident";
     else if (est.status === "auth_resident") statusCategory = "superintendent";
     else if (est.status === "paid") statusCategory = "paid";
     else if (["auth_super", "auth_leader", "validated_compras", "factura_subida", "validated_finanzas"].includes(est.status)) {
@@ -160,16 +171,13 @@ export default function Estimaciones() {
           }
 
           if (!match) {
-             // Try matching against filename
              match = contracts.find(c => fileNameWithoutExt.includes(c.name));
           }
 
           if (match) {
              setFormData(prev => ({ ...prev, contractId: match!.id }));
-             setContractSearch(match.name); // Normalize search to matched contract
+             setContractSearch(match.name);
           } else {
-             // If no match, we keep the filename in contractSearch but clear the ID
-             // This indicates a potential "New Contract"
              setFormData(prev => ({ ...prev, contractId: "" }));
           }
 
@@ -186,9 +194,14 @@ export default function Estimaciones() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Check if we have a contract ID OR if we have a search term (new contract)
-    if ((!formData.contractId && !contractSearch) || !formData.contractorName || !formData.estimationText || !formData.amount) {
-      toast.error("Por favor completa todos los campos requeridos.");
+    // Validation adjustments:
+    // If contractor is submitting, "Amount" and "Contract" might be optional if Analyst fills them.
+    // However, existing validation requires them. We'll relax them or require them but allow updates.
+    // For now, let's keep requiring them but maybe user inputs "0" or "TBD".
+    // Or, we assume Contractor inputs their "Claim" amount.
+
+    if ((!formData.contractId && !contractSearch) || !formData.contractorName || !formData.amount) {
+      toast.error("Por favor completa los campos requeridos.");
       return;
     }
 
@@ -209,12 +222,10 @@ export default function Estimaciones() {
 
       // Logic to create a new contract if ID is missing but we have a search term
       if (!finalContractId && contractSearch) {
-         // Check if it already exists by name (case insensitive)
          const existing = contracts.find(c => c.name.toLowerCase() === contractSearch.toLowerCase());
          if (existing) {
              finalContractId = existing.id;
          } else {
-             // Create new contract
              const { data: newContract, error: createError } = await supabase
                  .from('contracts')
                  .insert({
@@ -234,30 +245,36 @@ export default function Estimaciones() {
          }
       }
 
-      // 1. Upload File
       const publicUrl = await uploadFile(formData.pdfFile);
 
-      // 2. Generate folio and project number
       const folio = `EST-${Date.now().toString(36).toUpperCase()}`;
       const projectNumber = currentProject?.name || 'PROJ-001';
 
-      // 3. Create Estimation
+      // DETERMINE STATUS
+      // If Contractor, status is 'submitted_by_contractor'.
+      // If Support/Admin creating it, maybe 'registered'.
+      // Defaulting to 'submitted_by_contractor' for contractors.
+      const initialStatus = currentRole === 'contratista' ? 'submitted_by_contractor' as any : 'registered';
+
       await createEstimation({
         folio,
         project_number: projectNumber,
         contractor_name: formData.contractorName,
         amount: parseFloat(formData.amount),
-        estimation_text: formData.estimationText,
+        estimation_text: formData.estimationText || "Estimación enviada por contratista",
         contract_id: finalContractId,
-        cost_center_id: undefined, // Explicitly undefined
+        cost_center_id: undefined,
         pdf_url: publicUrl,
         pdf_details: pdfDetails,
+        status: initialStatus
       });
 
-      toast.success("Estimación creada exitosamente");
+      toast.success(initialStatus === 'submitted_by_contractor'
+        ? "Pre-estimación enviada para análisis"
+        : "Estimación creada exitosamente");
+
       setIsDialogOpen(false);
       
-      // Reset form
       setFormData({
         contractId: "",
         contractorName: "",
@@ -278,6 +295,8 @@ export default function Estimaciones() {
   // Helper for Status Badge
   const getStatusBadge = (status: string) => {
     switch (status) {
+      case "submitted_by_contractor":
+        return <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100">Pendiente de Análisis</Badge>;
       case "registered":
         return <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 hover:bg-yellow-200">En Revisión: Residente</Badge>;
       case "auth_resident":
@@ -316,6 +335,25 @@ export default function Estimaciones() {
     );
   }
 
+  // --- ANALYST MODE ---
+  if (isAnalystProcessing && selectedEstimation) {
+    return (
+      <AnalystEstimationForm
+        estimation={selectedEstimation}
+        projectId={currentProjectId}
+        onSuccess={() => {
+          setIsAnalystProcessing(false);
+          setSelectedEstimation(null);
+          refetch();
+        }}
+        onCancel={() => {
+          setIsAnalystProcessing(false);
+          setSelectedEstimation(null);
+        }}
+      />
+    );
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -336,16 +374,17 @@ export default function Estimaciones() {
               </DialogTrigger>
               <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                  <DialogTitle>Nueva Estimación</DialogTitle>
+                  <DialogTitle>Subir Pre-estimación</DialogTitle>
                 </DialogHeader>
 
                 <form onSubmit={handleSubmit} className="space-y-6 mt-4">
+                {/* Simplified Header for Contractor */}
+                <div className="bg-blue-50 border border-blue-200 rounded p-4 text-sm text-blue-800 mb-4">
+                  Sube tu archivo de estimación. Un analista revisará y completará los detalles del contrato.
+                </div>
 
                 <div className="space-y-2 bg-slate-50 p-4 rounded-md border border-slate-200">
                   <Label htmlFor="pdf" className="text-base font-semibold">Cargar Evidencia (PDF/Imagen) *</Label>
-                  <p className="text-sm text-muted-foreground mb-2">
-                    Carga el PDF de la estimación para autocompletar los campos y sugerir el contrato.
-                  </p>
                   <div className="flex items-center gap-2">
                     <Input
                       id="pdf"
@@ -370,7 +409,7 @@ export default function Estimaciones() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2 flex flex-col">
-                    <Label htmlFor="contract">Contrato *</Label>
+                    <Label htmlFor="contract">Contrato (Opcional)</Label>
                     <Popover open={openContract} onOpenChange={setOpenContract}>
                       <PopoverTrigger asChild>
                         <Button
@@ -394,26 +433,7 @@ export default function Estimaciones() {
                             onValueChange={setContractSearch}
                           />
                           <CommandList>
-                            <CommandEmpty className="py-6 text-center text-sm">
-                               {contractSearch ? (
-                                   <div className="flex flex-col items-center gap-2">
-                                       <p>No se encontró "{contractSearch}"</p>
-                                       <Button
-                                           size="sm"
-                                           variant="secondary"
-                                           onClick={() => {
-                                               // We keep contractSearch as is, but verify ID is cleared
-                                               setFormData(prev => ({ ...prev, contractId: "" }));
-                                               setOpenContract(false);
-                                           }}
-                                       >
-                                           Usar "{contractSearch}" como nuevo
-                                       </Button>
-                                   </div>
-                               ) : (
-                                   "No se encontraron contratos."
-                               )}
-                            </CommandEmpty>
+                            <CommandEmpty>No se encontraron contratos.</CommandEmpty>
                             <CommandGroup>
                               {contracts.map((contract) => (
                                 <CommandItem
@@ -439,9 +459,6 @@ export default function Estimaciones() {
                         </Command>
                       </PopoverContent>
                     </Popover>
-                    <p className="text-[0.8rem] text-muted-foreground">
-                        Puedes escribir el nombre del archivo o seleccionar uno existente.
-                    </p>
                   </div>
 
                   <div className="space-y-2">
@@ -456,7 +473,7 @@ export default function Estimaciones() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="amount">Monto de la Estimación *</Label>
+                    <Label htmlFor="amount">Monto Estimado *</Label>
                     <Input
                       id="amount"
                       type="number"
@@ -467,18 +484,6 @@ export default function Estimaciones() {
                       className="bg-background"
                     />
                   </div>
-                </div>
-
-
-                <div className="space-y-2">
-                  <Label htmlFor="description">Descripción *</Label>
-                  <Textarea
-                    id="description"
-                    value={formData.estimationText}
-                    onChange={(e) => setFormData({ ...formData, estimationText: e.target.value })}
-                    placeholder="Describe los conceptos incluidos..."
-                    className="min-h-[100px] bg-background"
-                  />
                 </div>
 
                 <div className="flex justify-end gap-2">
@@ -492,7 +497,7 @@ export default function Estimaciones() {
                     ) : (
                       <>
                         <Upload className="h-4 w-4 mr-2" />
-                        Crear Estimación
+                        Enviar Pre-estimación
                       </>
                     )}
                   </Button>
@@ -506,11 +511,12 @@ export default function Estimaciones() {
 
       <div className="space-y-4">
         {/* Quick Filters */}
-        <Tabs defaultValue="all" value={activeFilter} onValueChange={setActiveFilter} className="w-full">
-          <TabsList className="grid w-full grid-cols-3 md:grid-cols-5 lg:w-[900px]">
+        <Tabs defaultValue={currentRole === 'analista_estimaciones' ? 'submitted' : 'all'} value={activeFilter} onValueChange={setActiveFilter} className="w-full">
+          <TabsList className="grid w-full grid-cols-3 md:grid-cols-6 lg:w-[1000px]">
             <TabsTrigger value="all">Todas</TabsTrigger>
-            <TabsTrigger value="resident">En Revisión: Residente</TabsTrigger>
-            <TabsTrigger value="superintendent">En Revisión: Superintendente</TabsTrigger>
+            <TabsTrigger value="submitted">Pendientes Análisis</TabsTrigger>
+            <TabsTrigger value="resident">Revisión Residente</TabsTrigger>
+            <TabsTrigger value="superintendent">Revisión Super</TabsTrigger>
             <TabsTrigger value="authorized">Autorizadas</TabsTrigger>
             <TabsTrigger value="paid">Pagadas</TabsTrigger>
           </TabsList>
@@ -555,6 +561,23 @@ export default function Estimaciones() {
                       <TableCell>{new Date(est.createdAt).toLocaleDateString()}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
+
+                          {/* Analyst Action: Process */}
+                          {currentRole === 'analista_estimaciones' && est.status === 'submitted_by_contractor' && (
+                             <Button
+                               variant="default"
+                               size="sm"
+                               onClick={() => {
+                                 setSelectedEstimation(est);
+                                 setIsAnalystProcessing(true);
+                               }}
+                               className="bg-primary hover:bg-primary/90"
+                             >
+                               <FileInput className="h-4 w-4 mr-2" />
+                               Capturar
+                             </Button>
+                          )}
+
                           <Button
                             variant="ghost"
                             size="icon"
@@ -563,8 +586,8 @@ export default function Estimaciones() {
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
-                          {/* Only show Edit if contractor and status is editable */}
-                           {currentRole === 'contratista' && est.status === 'registered' && (
+
+                           {currentRole === 'contratista' && (est.status === 'registered' || est.status === 'submitted_by_contractor') && (
                             <Button
                               variant="ghost"
                               size="icon"
@@ -590,7 +613,7 @@ export default function Estimaciones() {
         onClose={() => setSelectedNotification(null)}
       />
 
-      {selectedEstimation && (
+      {selectedEstimation && !isAnalystProcessing && (
         <EstimationDetailModal
           estimation={selectedEstimation}
           onClose={() => setSelectedEstimation(null)}
