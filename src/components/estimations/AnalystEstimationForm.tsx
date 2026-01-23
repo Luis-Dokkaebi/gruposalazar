@@ -29,6 +29,7 @@ const conceptSchema = z.object({
 
 const formSchema = z.object({
   // Contract Data
+  catalogo_conceptos: z.string().min(1, "El catálogo de conceptos es requerido"),
   proyecto: z.string().min(1, "El proyecto es requerido"),
   proveedor: z.string().min(1, "El proveedor es requerido"),
   numero_contrato: z.string().min(1, "El número de contrato es requerido"),
@@ -67,6 +68,7 @@ export function AnalystEstimationForm({
 
   // Initial values from existing pdf_details or empty
   const defaultValues: Partial<FormData> = {
+    catalogo_conceptos: estimation.pdf_details?.contract_data?.catalogo_conceptos || "",
     proyecto: estimation.pdf_details?.contract_data?.proyecto || "",
     proveedor: estimation.contractorName || "",
     numero_contrato: estimation.pdf_details?.contract_data?.numero_contrato || "",
@@ -110,6 +112,7 @@ export function AnalystEstimationForm({
       const pdfDetails = {
         ...estimation.pdf_details, // Keep existing parsing info if any
         contract_data: {
+          catalogo_conceptos: data.catalogo_conceptos,
           proyecto: data.proyecto,
           proveedor: data.proveedor,
           numero_contrato: data.numero_contrato,
@@ -187,6 +190,11 @@ export function AnalystEstimationForm({
             <CardTitle className="text-lg font-semibold text-primary">Datos del Contrato</CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="catalogo_conceptos">Catálogo de Conceptos</Label>
+              <Input id="catalogo_conceptos" {...register("catalogo_conceptos")} placeholder="Nombre o referencia del catálogo" />
+              {errors.catalogo_conceptos && <span className="text-xs text-red-500">{errors.catalogo_conceptos.message}</span>}
+            </div>
             <div className="space-y-2">
               <Label htmlFor="proyecto">Proyecto</Label>
               <Input id="proyecto" {...register("proyecto")} placeholder="Nombre del proyecto" />
