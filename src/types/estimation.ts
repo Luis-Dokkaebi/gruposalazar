@@ -6,7 +6,8 @@ export type UserRole =
   | "compras"
   | "finanzas"
   | "pagos"
-  | "soporte_tecnico";
+  | "soporte_tecnico"
+  | "analista_estimaciones";
 
 export type EstimationStatus = 
   | "registered"
@@ -16,7 +17,8 @@ export type EstimationStatus =
   | "validated_compras"
   | "factura_subida"
   | "validated_finanzas"
-  | "paid";
+  | "paid"
+  | "submitted_by_contractor";
 
 export type CostCenterStatus = "inicio" | "proceso" | "cierre";
 
