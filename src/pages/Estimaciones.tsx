@@ -79,6 +79,12 @@ export default function Estimaciones() {
     estimationText: "",
     amount: "",
     pdfFile: null as File | null,
+    // Summary Fields
+    total_esta_estimacion: "",
+    amortizacion: "",
+    subtotal: "",
+    iva: "",
+    total_facturar: "",
   });
 
   // Set default filter for Analyst
@@ -154,12 +160,20 @@ export default function Estimaciones() {
         setIsParsing(true);
         try {
           const parsed = await parseDocument(file);
+
           setFormData(prev => ({
             ...prev,
             contractorName: parsed.contractorName || prev.contractorName,
             amount: parsed.amount ? parsed.amount.toString() : prev.amount,
             estimationText: parsed.estimationText || prev.estimationText,
+            // Populate summary fields from parsed details
+            total_esta_estimacion: parsed.details.summary?.total_esta_estimacion?.toString() || prev.total_esta_estimacion,
+            amortizacion: parsed.details.summary?.amortizacion?.toString() || prev.amortizacion,
+            subtotal: parsed.details.summary?.subtotal?.toString() || prev.subtotal,
+            iva: parsed.details.summary?.iva?.toString() || prev.iva,
+            total_facturar: parsed.details.summary?.total_facturar?.toString() || parsed.amount?.toString() || prev.total_facturar,
           }));
+
           setPdfDetails(parsed.details);
           toast.success("Datos extraídos del documento correctamente");
 
@@ -195,11 +209,6 @@ export default function Estimaciones() {
     e.preventDefault();
     
     // Validation adjustments:
-    // If contractor is submitting, "Amount" and "Contract" might be optional if Analyst fills them.
-    // However, existing validation requires them. We'll relax them or require them but allow updates.
-    // For now, let's keep requiring them but maybe user inputs "0" or "TBD".
-    // Or, we assume Contractor inputs their "Claim" amount.
-
     if ((!formData.contractId && !contractSearch) || !formData.contractorName || !formData.amount) {
       toast.error("Por favor completa los campos requeridos.");
       return;
@@ -251,10 +260,19 @@ export default function Estimaciones() {
       const projectNumber = currentProject?.name || 'PROJ-001';
 
       // DETERMINE STATUS
-      // If Contractor, status is 'submitted_by_contractor'.
-      // If Support/Admin creating it, maybe 'registered'.
-      // Defaulting to 'submitted_by_contractor' for contractors.
       const initialStatus = currentRole === 'contratista' ? 'submitted_by_contractor' as any : 'registered';
+
+      // Update pdfDetails with user-verified form data
+      const finalPdfDetails = {
+        ...pdfDetails,
+        summary: {
+           total_esta_estimacion: parseFloat(formData.total_esta_estimacion || "0"),
+           amortizacion: parseFloat(formData.amortizacion || "0"),
+           subtotal: parseFloat(formData.subtotal || "0"),
+           iva: parseFloat(formData.iva || "0"),
+           total_facturar: parseFloat(formData.total_facturar || formData.amount || "0"),
+        }
+      };
 
       await createEstimation({
         folio,
@@ -265,7 +283,7 @@ export default function Estimaciones() {
         contract_id: finalContractId,
         cost_center_id: undefined,
         pdf_url: publicUrl,
-        pdf_details: pdfDetails,
+        pdf_details: finalPdfDetails,
         status: initialStatus
       });
 
@@ -281,6 +299,11 @@ export default function Estimaciones() {
         estimationText: "",
         amount: "",
         pdfFile: null,
+        total_esta_estimacion: "",
+        amortizacion: "",
+        subtotal: "",
+        iva: "",
+        total_facturar: "",
       });
       setContractSearch("");
       setPdfDetails(undefined);
@@ -380,7 +403,7 @@ export default function Estimaciones() {
                 <form onSubmit={handleSubmit} className="space-y-6 mt-4">
                 {/* Simplified Header for Contractor */}
                 <div className="bg-blue-50 border border-blue-200 rounded p-4 text-sm text-blue-800 mb-4">
-                  Sube tu archivo de estimación. Un analista revisará y completará los detalles del contrato.
+                  Sube tu archivo de estimación. El sistema extraerá los datos financieros para su revisión.
                 </div>
 
                 <div className="space-y-2 bg-slate-50 p-4 rounded-md border border-slate-200">
@@ -472,18 +495,74 @@ export default function Estimaciones() {
                     />
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="amount">Monto Estimado *</Label>
-                    <Input
-                      id="amount"
-                      type="number"
-                      step="0.01"
-                      value={formData.amount}
-                      onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                      placeholder="0.00"
-                      className="bg-background"
-                    />
+                  {/* Summary Financial Fields - Extracted and Editable */}
+                  <div className="col-span-1 md:col-span-2 space-y-4 pt-4 border-t">
+                     <h3 className="font-semibold text-primary">Resumen Financiero (De Evidencia)</h3>
+                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="total_esta_estimacion">Total Esta Estimación</Label>
+                          <Input
+                            id="total_esta_estimacion"
+                            type="number"
+                            step="0.01"
+                            value={formData.total_esta_estimacion}
+                            onChange={(e) => setFormData({ ...formData, total_esta_estimacion: e.target.value })}
+                            className="bg-background"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="amortizacion" className="text-red-600">Amortización</Label>
+                          <Input
+                            id="amortizacion"
+                            type="number"
+                            step="0.01"
+                            value={formData.amortizacion}
+                            onChange={(e) => setFormData({ ...formData, amortizacion: e.target.value })}
+                            className="bg-background text-red-600"
+                          />
+                        </div>
+                         <div className="space-y-2">
+                          <Label htmlFor="subtotal">Subtotal</Label>
+                          <Input
+                            id="subtotal"
+                            type="number"
+                            step="0.01"
+                            value={formData.subtotal}
+                            onChange={(e) => setFormData({ ...formData, subtotal: e.target.value })}
+                            className="bg-background"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="iva">16% IVA</Label>
+                          <Input
+                            id="iva"
+                            type="number"
+                            step="0.01"
+                            value={formData.iva}
+                            onChange={(e) => setFormData({ ...formData, iva: e.target.value })}
+                            className="bg-background"
+                          />
+                        </div>
+                         <div className="space-y-2 md:col-span-2">
+                          <Label htmlFor="total_facturar" className="font-bold">Total a Facturar (Neto)</Label>
+                          <Input
+                            id="total_facturar"
+                            type="number"
+                            step="0.01"
+                            value={formData.total_facturar}
+                            onChange={(e) => {
+                                setFormData({
+                                    ...formData,
+                                    total_facturar: e.target.value,
+                                    amount: e.target.value // Sync with main amount
+                                });
+                            }}
+                            className="bg-green-50 font-bold border-green-200"
+                          />
+                        </div>
+                     </div>
                   </div>
+
                 </div>
 
                 <div className="flex justify-end gap-2">

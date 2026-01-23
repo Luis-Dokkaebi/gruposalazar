@@ -131,12 +131,6 @@ export function AnalystEstimationForm({
         concepts: data.conceptos,
       };
 
-      // Calculate total amount from concepts?
-      // The user didn't specify that the Estimation Amount comes from here,
-      // but usually the "Order Amount" is the contract total.
-      // We will keep the estimation amount as is, or update it if needed.
-      // For now, we just update the details and status.
-
       const { error } = await supabase
         .from("estimations")
         .update({
