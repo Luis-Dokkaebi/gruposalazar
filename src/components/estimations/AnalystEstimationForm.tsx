@@ -25,6 +25,15 @@ const conceptSchema = z.object({
   unidad: z.string().min(1, "La unidad es requerida"),
   cantidad_contrato: z.number().min(0, "La cantidad debe ser mayor o igual a 0"),
   precio_unitario: z.number().min(0, "El P.U. debe ser mayor o igual a 0"),
+
+  // New columns for analysis
+  avance_acumulado_anterior: z.number().optional(),
+  cantidad_real: z.number().optional(),
+  cantidad_esta_estimacion: z.number().optional(),
+  avance_acumulado_actual: z.number().optional(),
+  por_estimar: z.number().optional(),
+  importe_acumulado: z.number().optional(),
+  importe_esta_estimacion: z.number().optional(),
 });
 
 const formSchema = z.object({
@@ -44,6 +53,13 @@ const formSchema = z.object({
   porcentaje_anticipo: z.number().min(0).max(100),
   anticipo_amortizado: z.number(),
   anticipo_por_amortizar: z.number(),
+
+  // Summary Data (New Section)
+  total_esta_estimacion: z.number().optional(),
+  amortizacion: z.number().optional(),
+  subtotal: z.number().optional(),
+  iva: z.number().optional(),
+  total_facturar: z.number().optional(),
 
   // Concepts
   conceptos: z.array(conceptSchema).min(1, "Debe agregar al menos un concepto"),
@@ -82,6 +98,13 @@ export function AnalystEstimationForm({
     porcentaje_anticipo: Number(estimation.pdf_details?.advance_data?.porcentaje_anticipo) || 30,
     anticipo_amortizado: Number(estimation.pdf_details?.advance_data?.anticipo_amortizado) || 0,
     anticipo_por_amortizar: Number(estimation.pdf_details?.advance_data?.anticipo_por_amortizar) || 0,
+
+    // Map extracted summary values
+    total_esta_estimacion: Number(estimation.pdf_details?.summary?.total_esta_estimacion) || 0,
+    amortizacion: Number(estimation.pdf_details?.summary?.amortizacion) || 0,
+    subtotal: Number(estimation.pdf_details?.summary?.subtotal) || 0,
+    iva: Number(estimation.pdf_details?.summary?.iva) || 0,
+    total_facturar: Number(estimation.pdf_details?.summary?.total_facturar) || Number(estimation.amount) || 0,
 
     conceptos: estimation.pdf_details?.concepts || [
       { concepto: "", unidad: "", cantidad_contrato: 0, precio_unitario: 0 }
@@ -128,21 +151,22 @@ export function AnalystEstimationForm({
           anticipo_amortizado: data.anticipo_amortizado,
           anticipo_por_amortizar: data.anticipo_por_amortizar,
         },
+        summary: {
+           total_esta_estimacion: data.total_esta_estimacion,
+           amortizacion: data.amortizacion,
+           subtotal: data.subtotal,
+           iva: data.iva,
+           total_facturar: data.total_facturar,
+        },
         concepts: data.conceptos,
       };
-
-      // Calculate total amount from concepts?
-      // The user didn't specify that the Estimation Amount comes from here,
-      // but usually the "Order Amount" is the contract total.
-      // We will keep the estimation amount as is, or update it if needed.
-      // For now, we just update the details and status.
 
       const { error } = await supabase
         .from("estimations")
         .update({
           pdf_details: pdfDetails,
           status: "registered", // Move to Resident review
-          // We could also update 'contractor_name' or 'amount' if these fields are authoritative here
+          amount: data.total_facturar || estimation.amount, // Update main amount too
         })
         .eq("id", estimation.id);
 
@@ -301,14 +325,25 @@ export function AnalystEstimationForm({
             </Button>
           </CardHeader>
           <CardContent>
-            <div className="rounded-md border">
-              <Table>
+            <div className="rounded-md border overflow-x-auto">
+              <Table className="min-w-[1200px]">
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Concepto</TableHead>
-                    <TableHead className="w-[100px]">Unidad</TableHead>
-                    <TableHead className="w-[150px]">Cantidad Contrato</TableHead>
-                    <TableHead className="w-[150px]">P.U.</TableHead>
+                    {/* Fixed Columns */}
+                    <TableHead className="w-[200px]">Concepto</TableHead>
+                    <TableHead className="w-[80px]">Unidad</TableHead>
+                    <TableHead className="w-[100px]">Cant. Contrato</TableHead>
+                    <TableHead className="w-[100px]">P.U.</TableHead>
+
+                    {/* Extracted Columns */}
+                    <TableHead className="bg-orange-50 text-orange-900 w-[100px]">Avance Acum. (Ant)</TableHead>
+                    <TableHead className="bg-orange-50 text-orange-900 w-[100px]">Cant. Real</TableHead>
+                    <TableHead className="bg-orange-100 text-orange-900 font-bold w-[100px]">Esta Est.</TableHead>
+                    <TableHead className="bg-orange-50 text-orange-900 w-[100px]">Avance Acum. (Act)</TableHead>
+                    <TableHead className="bg-orange-50 text-orange-900 w-[100px]">Por Estimar</TableHead>
+                    <TableHead className="bg-orange-50 text-orange-900 w-[120px]">Imp. Acumulado</TableHead>
+                    <TableHead className="bg-orange-100 text-orange-900 font-bold w-[120px]">Imp. Esta Est.</TableHead>
+
                     <TableHead className="w-[50px]"></TableHead>
                   </TableRow>
                 </TableHeader>
@@ -318,17 +353,16 @@ export function AnalystEstimationForm({
                       <TableCell>
                         <Input
                           {...register(`conceptos.${index}.concepto`)}
-                          placeholder="Descripción del concepto"
+                          placeholder="Descripción"
                           className="border-0 shadow-none focus-visible:ring-0"
                         />
-                        {errors.conceptos?.[index]?.concepto && (
+                         {errors.conceptos?.[index]?.concepto && (
                           <span className="text-xs text-red-500">{errors.conceptos[index]?.concepto?.message}</span>
                         )}
                       </TableCell>
                       <TableCell>
                         <Input
                           {...register(`conceptos.${index}.unidad`)}
-                          placeholder="m2, pza..."
                           className="border-0 shadow-none focus-visible:ring-0"
                         />
                       </TableCell>
@@ -348,6 +382,30 @@ export function AnalystEstimationForm({
                           className="border-0 shadow-none focus-visible:ring-0"
                         />
                       </TableCell>
+
+                      {/* New Extraction Fields */}
+                      <TableCell className="bg-orange-50/30">
+                         <Input type="number" step="0.01" {...register(`conceptos.${index}.avance_acumulado_anterior`, { valueAsNumber: true })} className="bg-transparent border-0 shadow-none" />
+                      </TableCell>
+                      <TableCell className="bg-orange-50/30">
+                         <Input type="number" step="0.01" {...register(`conceptos.${index}.cantidad_real`, { valueAsNumber: true })} className="bg-transparent border-0 shadow-none" />
+                      </TableCell>
+                      <TableCell className="bg-orange-100/30 font-medium">
+                         <Input type="number" step="0.01" {...register(`conceptos.${index}.cantidad_esta_estimacion`, { valueAsNumber: true })} className="bg-transparent border-0 shadow-none" />
+                      </TableCell>
+                      <TableCell className="bg-orange-50/30">
+                         <Input type="number" step="0.01" {...register(`conceptos.${index}.avance_acumulado_actual`, { valueAsNumber: true })} className="bg-transparent border-0 shadow-none" />
+                      </TableCell>
+                      <TableCell className="bg-orange-50/30">
+                         <Input type="number" step="0.01" {...register(`conceptos.${index}.por_estimar`, { valueAsNumber: true })} className="bg-transparent border-0 shadow-none" />
+                      </TableCell>
+                      <TableCell className="bg-orange-50/30">
+                         <Input type="number" step="0.01" {...register(`conceptos.${index}.importe_acumulado`, { valueAsNumber: true })} className="bg-transparent border-0 shadow-none" />
+                      </TableCell>
+                      <TableCell className="bg-orange-100/30 font-medium">
+                         <Input type="number" step="0.01" {...register(`conceptos.${index}.importe_esta_estimacion`, { valueAsNumber: true })} className="bg-transparent border-0 shadow-none" />
+                      </TableCell>
+
                       <TableCell>
                         <Button
                           type="button"
@@ -367,6 +425,37 @@ export function AnalystEstimationForm({
             {errors.conceptos && (
               <p className="text-sm text-red-500 mt-2">{errors.conceptos.message}</p>
             )}
+          </CardContent>
+        </Card>
+
+        {/* Section 4: Summary Table (Estimación) */}
+        <Card className="border-t-4 border-t-primary">
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold text-primary">Resumen Financiero (Estimación)</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
+                <div className="flex flex-col gap-2">
+                   <Label>Total Esta Estimación</Label>
+                   <Input type="number" step="0.01" {...register("total_esta_estimacion", { valueAsNumber: true })} />
+                </div>
+                <div className="flex flex-col gap-2">
+                   <Label>Amortización</Label>
+                   <Input type="number" step="0.01" className="text-red-600" {...register("amortizacion", { valueAsNumber: true })} />
+                </div>
+                <div className="flex flex-col gap-2">
+                   <Label>Subtotal</Label>
+                   <Input type="number" step="0.01" {...register("subtotal", { valueAsNumber: true })} />
+                </div>
+                <div className="flex flex-col gap-2">
+                   <Label>16% IVA</Label>
+                   <Input type="number" step="0.01" {...register("iva", { valueAsNumber: true })} />
+                </div>
+                <div className="flex flex-col gap-2 col-span-1 md:col-span-2">
+                   <Label className="text-lg font-bold">Total a Facturar (Neto a Pagar)</Label>
+                   <Input type="number" step="0.01" className="text-lg font-bold bg-green-50 border-green-200" {...register("total_facturar", { valueAsNumber: true })} />
+                </div>
+             </div>
           </CardContent>
         </Card>
 

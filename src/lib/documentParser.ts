@@ -19,7 +19,6 @@ export interface ParsedEstimationData {
  */
 export const parseDocument = async (file: File): Promise<ParsedEstimationData> => {
   let fullText = '';
-  let details: Record<string, any> = {};
 
   try {
     if (file.type === 'application/pdf') {
@@ -61,7 +60,7 @@ const extractTextFromImage = async (file: File): Promise<string> => {
   return ret.data.text;
 };
 
-const extractDataFromText = (fullText: string): ParsedEstimationData => {
+export const extractDataFromText = (fullText: string): ParsedEstimationData => {
   const details: Record<string, any> = {};
 
   // Helper functions
@@ -80,10 +79,25 @@ const extractDataFromText = (fullText: string): ParsedEstimationData => {
      return match ? match[1] : null;
   };
 
+  // Helper to extract row values (Importe Anterior, Esta Estimación, Acumulado, Por Estimar)
+  // Assuming the row contains multiple money values.
+  const extractRowValues = (labelPattern: string): number[] | null => {
+    const regex = new RegExp(`${labelPattern}.*`, 'i');
+    const match = fullText.match(regex);
+    if (!match) return null;
+
+    const line = match[0];
+    // Find all money-like patterns (allow negative values with -)
+    // Matches: $123.45, 123.45, -123.45, $1,234.56
+    const moneyMatches = line.match(/-?\$?[\d,]+\.?\d{2}/g);
+    if (!moneyMatches) return null;
+
+    return moneyMatches.map(m => parseFloat(m.replace(/[$,]/g, '')));
+  };
+
   // --- Extraction Logic ---
 
   // 1. Contractor Name
-  // Common labels: "Proveedor:", "Contratista:", "Empresa:"
   let contractorName: string | undefined;
   const matchProvider = fullText.match(/(?:Proveedor|Contratista|Empresa):\s*(\d+\s+)?([^\n]+)/i);
   if (matchProvider) {
@@ -91,7 +105,6 @@ const extractDataFromText = (fullText: string): ParsedEstimationData => {
   }
 
   // 2. Contract ID
-  // Common labels: "Número de contrato:", "Contrato No.", "Contrato:"
   let contractId: string | undefined;
   const matchContract = fullText.match(/(?:Número de contrato|Contrato No\.|Contrato)[:\s]*([^\n]+)/i);
   if (matchContract) {
@@ -99,28 +112,57 @@ const extractDataFromText = (fullText: string): ParsedEstimationData => {
   }
 
   // 3. Cost Center
-  // Common labels: "Centro de Costos:", "C.C.:", "CC:", "Obra:"
   let costCenterText: string | undefined;
   const matchCC = fullText.match(/(?:Centro de Costos|C\.C\.|CC|Obra)[:\s]*([^\n]+)/i);
   if (matchCC) {
     costCenterText = matchCC[1].trim();
   }
 
-  // 4. Amount
-  // Strategy: Look for "Total a facturar", "Total Estimación", "Importe Total", "Neto a Pagar"
-  let amount = 0;
+  // 4. Summary Table Extraction
+  // Rows: Total esta estimación, Amortización, Subtotal, IVA, Total a facturar
+  // Columns (implied): Anterior, Esta Estimación, Acumulado, Por Estimar.
+  // We assume standard column order, so 'This Estimation' is usually index 1 (0-based) or index 0 if 'Anterior' is missing.
+  // Based on user image: Anterior ($477k), Esta ($57k), Acumulado ($535k), Por Estimar ($69M).
+  // So 'This Estimation' is likely the 2nd value found (Index 1).
 
-  // Prioritize "Total a facturar" or similar specific terms
-  let totalStr = extractMoney('Total a facturar');
-  if (!totalStr) totalStr = extractMoney('Total esta estimación');
-  if (!totalStr) totalStr = extractMoney('Importe Total');
-  if (!totalStr) totalStr = extractMoney('Neto a Pagar');
-  if (!totalStr) totalStr = extractMoney('Total'); // Fallback, risky
+  const summaryData: Record<string, any> = {};
 
-  if (totalStr) {
-    const cleanStr = totalStr.replace(/,/g, '');
-    amount = parseFloat(cleanStr);
+  const getThisEstValue = (values: number[] | null) => {
+    if (!values || values.length < 2) return values ? values[0] : 0; // Fallback to first if only one
+    return values[1]; // Assume 2nd column is 'This Estimation'
+  };
+
+  const totalEstValues = extractRowValues('Total esta estimación');
+  const amortizacionValues = extractRowValues('Amortizaci[oó]n');
+  const subtotalValues = extractRowValues('Subtotal');
+  const ivaValues = extractRowValues('(?:IVA|I\\.V\\.A\\.|Impuesto)'); // matches IVA, I.V.A., Impuesto
+  const totalFacturarValues = extractRowValues('(?:Total a facturar|Neto a pagar)');
+
+  summaryData.total_esta_estimacion = getThisEstValue(totalEstValues);
+  summaryData.amortizacion = getThisEstValue(amortizacionValues);
+  summaryData.subtotal = getThisEstValue(subtotalValues);
+  summaryData.iva = getThisEstValue(ivaValues);
+  summaryData.total_facturar = getThisEstValue(totalFacturarValues); // Should match 'amount'
+
+  // 4. Amount (Use Total a facturar or logic from before)
+  let amount = summaryData.total_facturar || 0;
+
+  if (amount === 0) {
+      // Fallback strategies
+      let totalStr = extractMoney('Total a facturar');
+      if (!totalStr) totalStr = extractMoney('Total esta estimación');
+      if (!totalStr) totalStr = extractMoney('Importe Total');
+      if (!totalStr) totalStr = extractMoney('Neto a Pagar');
+      if (!totalStr) totalStr = extractMoney('Total');
+
+      if (totalStr) {
+        amount = parseFloat(totalStr.replace(/,/g, ''));
+      }
   }
+
+  // --- Concept Table Header Detection ---
+  // We can't easily parse rows, but we can detect if the standard headers exist
+  const hasConceptTable = /Avance acumulado|Cantidad real|Por estimar/i.test(fullText);
 
   // --- Details for Debug/Display ---
   details.contractData = {
@@ -132,8 +174,14 @@ const extractDataFromText = (fullText: string): ParsedEstimationData => {
   };
 
   details.summary = {
-      totalToInvoice: totalStr,
+      totalToInvoice: amount, // standard field
+      ...summaryData // Detailed table values
   };
+
+  if (hasConceptTable) {
+      details.hasConceptTable = true;
+      // We could add raw text or hints here
+  }
 
   return {
     contractorName,
