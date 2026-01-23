@@ -264,6 +264,7 @@ export function useProjectEstimations(projectId: string | null) {
     cost_center_id?: string;
     pdf_url?: string;
     pdf_details?: Record<string, any>;
+    status?: EstimationStatus;
   }) => {
     if (!user || !projectId) throw new Error('No authenticated user or project');
 
@@ -282,10 +283,12 @@ export function useProjectEstimations(projectId: string | null) {
         ...projectConfig
     };
 
-    // Calculate initial status based on active roles
-    // If a role is inactive, skip to the next active one
-    let initialStatus: EstimationStatus = 'registered';
-    if (!defaults.is_resident_active) {
+    // Calculate initial status
+    let initialStatus: EstimationStatus = data.status || 'registered';
+
+    // Only apply role skipping logic if we are starting from 'registered' (default flow)
+    // If status is explicitly provided (e.g. 'submitted_by_contractor'), we respect it.
+    if (!data.status && !defaults.is_resident_active) {
       if (defaults.is_superintendent_active) {
         initialStatus = 'auth_resident';
       } else if (defaults.is_leader_active) {

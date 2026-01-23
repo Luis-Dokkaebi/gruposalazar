@@ -260,7 +260,9 @@ export default function Estimaciones() {
       const projectNumber = currentProject?.name || 'PROJ-001';
 
       // DETERMINE STATUS
-      const initialStatus = currentRole === 'contratista' ? 'submitted_by_contractor' as any : 'registered';
+      const initialStatus = (currentRole === 'contratista' || currentRole === 'analista_estimaciones')
+        ? 'submitted_by_contractor' as any
+        : 'registered';
 
       // Update pdfDetails with user-verified form data
       const finalPdfDetails = {
@@ -387,7 +389,7 @@ export default function Estimaciones() {
           { label: "Estimaciones" },
         ]}
         actions={
-          currentRole === "contratista" && (
+          (currentRole === "contratista" || currentRole === "analista_estimaciones") && (
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
                 <Button>
