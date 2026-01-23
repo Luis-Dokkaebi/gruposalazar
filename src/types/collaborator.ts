@@ -6,6 +6,7 @@ export type AppRole = Database['public']['Enums']['app_role'];
 // This array is typed as AppRole[], so if the DB enum changes, this will error at compile time,
 // ensuring strict synchronization.
 export const APP_ROLES: AppRole[] = [
+  "analista_estimaciones",
   "contratista",
   "residente",
   "superintendente",

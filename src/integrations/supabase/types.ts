@@ -543,6 +543,7 @@ export type Database = {
         | "finanzas"
         | "pagos"
         | "soporte_tecnico"
+        | "analista_estimaciones"
       estimation_status:
         | "registered"
         | "auth_resident"
@@ -552,6 +553,7 @@ export type Database = {
         | "factura_subida"
         | "validated_finanzas"
         | "paid"
+        | "submitted_by_contractor"
     }
     CompositeTypes: {
       [_ in never]: never
