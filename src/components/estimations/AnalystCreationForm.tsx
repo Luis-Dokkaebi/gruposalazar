@@ -65,7 +65,6 @@ export function AnalystCreationForm({
   createEstimation,
 }: AnalystCreationFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [pdfFile, setPdfFile] = useState<File | null>(null);
 
   const defaultValues: Partial<FormData> = {
     fecha_contrato: new Date().toISOString().split('T')[0],
@@ -89,33 +88,10 @@ export function AnalystCreationForm({
     name: "conceptos",
   });
 
-  const uploadFile = async (file: File) => {
-    const fileExt = file.name.split('.').pop();
-    const fileName = `EST_ANALYST_${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
-    const filePath = fileName;
-
-    const { error: uploadError } = await supabase.storage
-      .from('estimations')
-      .upload(filePath, file);
-
-    if (uploadError) {
-      throw uploadError;
-    }
-    return filePath;
-  };
-
   const onSubmit = async (data: FormData) => {
-    if (!pdfFile) {
-      toast.error("Por favor adjunta el archivo de evidencia (PDF/Imagen)");
-      return;
-    }
-
     setIsSubmitting(true);
     try {
-      // 1. Upload File
-      const publicUrl = await uploadFile(pdfFile);
-
-      // 2. Prepare PDF Details
+      // 1. Prepare PDF Details (Data)
       const pdfDetails = {
         contract_data: {
           catalogo_conceptos: data.catalogo_conceptos,
@@ -161,7 +137,7 @@ export function AnalystCreationForm({
 
       const folio = `EST-${Date.now().toString(36).toUpperCase()}`;
 
-      // 3. Create Estimation
+      // 2. Create Estimation
       await createEstimation({
         folio,
         project_number: data.proyecto || 'PROJ-UNK',
@@ -169,7 +145,7 @@ export function AnalystCreationForm({
         amount: 0, // Initial amount 0 until progress is added? Or should I use importe_pedido?
         estimation_text: `Estimación creada por analista - Contrato: ${data.numero_contrato}`,
         contract_id: undefined, // We don't link to hard contract ID yet, relying on pdf_details
-        pdf_url: publicUrl,
+        pdf_url: undefined, // No file uploaded for analyst creation
         pdf_details: pdfDetails,
         status: 'registered' // Bypassing contractor submission since analyst created it
       });
@@ -190,31 +166,12 @@ export function AnalystCreationForm({
         <div>
           <h2 className="text-xl font-bold tracking-tight">Nueva Estimación - Analista</h2>
           <p className="text-muted-foreground text-sm">
-            Cargar evidencia y capturar datos del contrato.
+            Capturar datos del contrato.
           </p>
         </div>
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-
-        {/* File Upload Section */}
-        <div className="space-y-2 bg-slate-50 p-4 rounded-md border border-slate-200">
-          <Label htmlFor="pdf" className="text-base font-semibold">Cargar Evidencia (PDF/Imagen) *</Label>
-          <div className="flex items-center gap-2">
-            <Input
-              id="pdf"
-              type="file"
-              accept=".pdf,image/*"
-              onChange={(e) => setPdfFile(e.target.files?.[0] || null)}
-              className="bg-background"
-            />
-          </div>
-          {pdfFile && (
-            <p className="text-sm text-green-600 mt-1">
-              Archivo seleccionado: {pdfFile.name}
-            </p>
-          )}
-        </div>
 
         {/* Section 1: Contract Data */}
         <Card>
