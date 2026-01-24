@@ -265,14 +265,16 @@ export function useProjectEstimations(projectId: string | null) {
     pdf_url?: string;
     pdf_details?: Record<string, any>;
     status?: EstimationStatus;
+    project_id?: string;
   }) => {
-    if (!user || !projectId) throw new Error('No authenticated user or project');
+    const targetProjectId = data.project_id || projectId;
+    if (!user || !targetProjectId) throw new Error('No authenticated user or project');
 
     // Get default configuration from project
     const { data: projectConfig } = await supabase
       .from('projects')
       .select('is_resident_active, is_superintendent_active, is_leader_active')
-      .eq('id', projectId)
+      .eq('id', targetProjectId)
       .single();
 
     // Default to true if not found
@@ -303,7 +305,7 @@ export function useProjectEstimations(projectId: string | null) {
       .from('estimations')
       .insert({
         ...data,
-        project_id: projectId,
+        project_id: targetProjectId,
         created_by: user.id,
         status: initialStatus,
         is_resident_active: defaults.is_resident_active,

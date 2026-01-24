@@ -55,13 +55,17 @@ type Contract = Database['public']['Tables']['contracts']['Row'];
 
 export default function Estimaciones() {
   const { currentRole, emailNotifications } = useEstimationStore();
-  const { currentProjectId, currentProject } = useProject();
+  const { currentProjectId, currentProject, projects } = useProject();
   const { estimations: dbEstimations, loading, error, createEstimation, refetch } = useProjectEstimations(currentProjectId);
   
   const [selectedNotification, setSelectedNotification] = useState<typeof emailNotifications[0] | null>(null);
   const [selectedEstimation, setSelectedEstimation] = useState<Estimation | null>(null);
   const [isAnalystProcessing, setIsAnalystProcessing] = useState(false);
   const [contracts, setContracts] = useState<Contract[]>([]);
+
+  // Form state for project selection
+  const [selectedFormProjectId, setSelectedFormProjectId] = useState<string | null>(currentProjectId);
+  const [openProjectSelect, setOpenProjectSelect] = useState(false);
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -88,6 +92,13 @@ export default function Estimaciones() {
     total_facturar: "",
   });
 
+  // Sync form project with current project when it changes
+  useEffect(() => {
+    if (currentProjectId) {
+      setSelectedFormProjectId(currentProjectId);
+    }
+  }, [currentProjectId]);
+
   // Set default filter for Analyst
   useEffect(() => {
     if (currentRole === 'analista_estimaciones') {
@@ -95,17 +106,20 @@ export default function Estimaciones() {
     }
   }, [currentRole]);
 
-  // Fetch contracts for the current project
+  // Fetch contracts for the selected form project
   useEffect(() => {
-    if (!currentProjectId) return;
+    if (!selectedFormProjectId) {
+      setContracts([]);
+      return;
+    }
 
     const fetchProjectData = async () => {
-      const { data } = await supabase.from('contracts').select('*').eq('project_id', currentProjectId);
+      const { data } = await supabase.from('contracts').select('*').eq('project_id', selectedFormProjectId);
       if (data) setContracts(data);
     };
 
     fetchProjectData();
-  }, [currentProjectId]);
+  }, [selectedFormProjectId]);
 
   // Map DB estimations to frontend format
   const estimations = dbEstimations.map(est => mapDbEstimationToFrontend(est as any));
@@ -220,7 +234,7 @@ export default function Estimaciones() {
       return;
     }
 
-    if (!currentProjectId) {
+    if (!selectedFormProjectId) {
       toast.error("Por favor selecciona un proyecto");
       return;
     }
@@ -239,7 +253,7 @@ export default function Estimaciones() {
              const { data: newContract, error: createError } = await supabase
                  .from('contracts')
                  .insert({
-                     project_id: currentProjectId,
+                     project_id: selectedFormProjectId,
                      name: contractSearch,
                      description: 'Contrato creado automáticamente desde estimación'
                  })
@@ -258,7 +272,9 @@ export default function Estimaciones() {
       const publicUrl = await uploadFile(formData.pdfFile);
 
       const folio = `EST-${Date.now().toString(36).toUpperCase()}`;
-      const projectNumber = currentProject?.name || 'PROJ-001';
+      // Use selected project name or current project fallback
+      const selectedProject = projects.find(p => p.id === selectedFormProjectId);
+      const projectNumber = selectedProject?.name || currentProject?.name || 'PROJ-001';
 
       // DETERMINE STATUS
       const initialStatus = (currentRole === 'contratista' || currentRole === 'analista_estimaciones')
@@ -287,7 +303,8 @@ export default function Estimaciones() {
         cost_center_id: undefined,
         pdf_url: publicUrl,
         pdf_details: finalPdfDetails,
-        status: initialStatus
+        status: initialStatus,
+        project_id: selectedFormProjectId
       });
 
       toast.success(initialStatus === 'submitted_by_contractor'
@@ -344,22 +361,6 @@ export default function Estimaciones() {
     }
   };
 
-  if (!currentProjectId) {
-    return (
-      <div className="space-y-8">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Mis Estimaciones</h1>
-          <p className="text-muted-foreground mt-2">
-            Gestiona y crea nuevas estimaciones de obra
-          </p>
-        </div>
-        <Card className="p-12 text-center border-border">
-          <AlertCircle className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
-          <p className="text-muted-foreground">Selecciona un proyecto para ver las estimaciones</p>
-        </Card>
-      </div>
-    );
-  }
 
   // --- ANALYST MODE ---
   if (isAnalystProcessing && selectedEstimation) {
@@ -419,6 +420,54 @@ export default function Estimaciones() {
                       {/* Simplified Header for Contractor */}
                       <div className="bg-blue-50 border border-blue-200 rounded p-4 text-sm text-blue-800 mb-4">
                         Sube tu archivo de estimación. El sistema extraerá los datos financieros para su revisión.
+                      </div>
+
+                      {/* Project Selection */}
+                      <div className="space-y-2">
+                        <Label htmlFor="project">Proyecto *</Label>
+                        <Popover open={openProjectSelect} onOpenChange={setOpenProjectSelect}>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              role="combobox"
+                              aria-expanded={openProjectSelect}
+                              className="w-full justify-between bg-background"
+                            >
+                              {selectedFormProjectId
+                                ? projects.find((project) => project.id === selectedFormProjectId)?.name
+                                : "Selecciona un proyecto..."}
+                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-[400px] p-0" align="start">
+                            <Command>
+                              <CommandInput placeholder="Buscar proyecto..." />
+                              <CommandList>
+                                <CommandEmpty>No se encontraron proyectos.</CommandEmpty>
+                                <CommandGroup>
+                                  {projects.map((project) => (
+                                    <CommandItem
+                                      key={project.id}
+                                      value={project.name}
+                                      onSelect={() => {
+                                        setSelectedFormProjectId(project.id);
+                                        setOpenProjectSelect(false);
+                                      }}
+                                    >
+                                      <Check
+                                        className={cn(
+                                          "mr-2 h-4 w-4",
+                                          selectedFormProjectId === project.id ? "opacity-100" : "opacity-0"
+                                        )}
+                                      />
+                                      {project.name}
+                                    </CommandItem>
+                                  ))}
+                                </CommandGroup>
+                              </CommandList>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
                       </div>
 
                       <div className="space-y-2 bg-slate-50 p-4 rounded-md border border-slate-200">
@@ -605,6 +654,12 @@ export default function Estimaciones() {
       }
       />
 
+      { !currentProjectId ? (
+        <Card className="p-12 text-center border-border">
+          <AlertCircle className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
+          <p className="text-muted-foreground">Selecciona un proyecto para ver las estimaciones</p>
+        </Card>
+      ) : (
       <div className="space-y-4">
         {/* Quick Filters */}
         <Tabs defaultValue={currentRole === 'analista_estimaciones' ? 'submitted' : 'all'} value={activeFilter} onValueChange={setActiveFilter} className="w-full">
@@ -703,6 +758,7 @@ export default function Estimaciones() {
           )}
         </Card>
       </div>
+      )}
 
       <EmailModal
         notification={selectedNotification}
