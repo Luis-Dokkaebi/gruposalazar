@@ -30,6 +30,7 @@ import { toast } from "sonner";
 import { EmailModal } from "@/components/EmailModal";
 import { EstimationDetailModal } from "@/components/EstimationDetailModal";
 import { AnalystEstimationForm } from "@/components/estimations/AnalystEstimationForm";
+import { AnalystCreationForm } from "@/components/estimations/AnalystCreationForm";
 import { mapDbEstimationToFrontend } from "@/lib/estimationMapper";
 import { parseDocument } from "@/lib/documentParser";
 import type { Database } from "@/integrations/supabase/types";
@@ -398,41 +399,53 @@ export default function Estimaciones() {
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>Subir Pre-estimación</DialogTitle>
-                </DialogHeader>
+                {currentRole === 'analista_estimaciones' ? (
+                  <AnalystCreationForm
+                    projectId={currentProjectId!}
+                    onSuccess={() => {
+                      setIsDialogOpen(false);
+                      refetch();
+                    }}
+                    onCancel={() => setIsDialogOpen(false)}
+                    createEstimation={createEstimation}
+                  />
+                ) : (
+                  <>
+                    <DialogHeader>
+                      <DialogTitle>Subir Pre-estimación</DialogTitle>
+                    </DialogHeader>
 
-                <form onSubmit={handleSubmit} className="space-y-6 mt-4">
-                {/* Simplified Header for Contractor */}
-                <div className="bg-blue-50 border border-blue-200 rounded p-4 text-sm text-blue-800 mb-4">
-                  Sube tu archivo de estimación. El sistema extraerá los datos financieros para su revisión.
-                </div>
+                    <form onSubmit={handleSubmit} className="space-y-6 mt-4">
+                      {/* Simplified Header for Contractor */}
+                      <div className="bg-blue-50 border border-blue-200 rounded p-4 text-sm text-blue-800 mb-4">
+                        Sube tu archivo de estimación. El sistema extraerá los datos financieros para su revisión.
+                      </div>
 
-                <div className="space-y-2 bg-slate-50 p-4 rounded-md border border-slate-200">
-                  <Label htmlFor="pdf" className="text-base font-semibold">Cargar Evidencia (PDF/Imagen) *</Label>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      id="pdf"
-                      type="file"
-                      accept=".pdf,image/*"
-                      onChange={handleFileChange}
-                      className="bg-background"
-                    />
-                  </div>
-                  {isParsing && (
-                     <div className="flex items-center gap-2 text-sm text-blue-600 mt-2">
-                       <Loader2 className="h-3 w-3 animate-spin" />
-                       Analizando documento...
-                     </div>
-                  )}
-                  {formData.pdfFile && !isParsing && (
-                    <p className="text-sm text-green-600 mt-1">
-                      Archivo: {formData.pdfFile.name}
-                    </p>
-                  )}
-                </div>
+                      <div className="space-y-2 bg-slate-50 p-4 rounded-md border border-slate-200">
+                        <Label htmlFor="pdf" className="text-base font-semibold">Cargar Evidencia (PDF/Imagen) *</Label>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            id="pdf"
+                            type="file"
+                            accept=".pdf,image/*"
+                            onChange={handleFileChange}
+                            className="bg-background"
+                          />
+                        </div>
+                        {isParsing && (
+                          <div className="flex items-center gap-2 text-sm text-blue-600 mt-2">
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                            Analizando documento...
+                          </div>
+                        )}
+                        {formData.pdfFile && !isParsing && (
+                          <p className="text-sm text-green-600 mt-1">
+                            Archivo: {formData.pdfFile.name}
+                          </p>
+                        )}
+                      </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2 flex flex-col">
                     <Label htmlFor="contract">Contrato (Opcional)</Label>
                     <Popover open={openContract} onOpenChange={setOpenContract}>
@@ -567,24 +580,26 @@ export default function Estimaciones() {
 
                 </div>
 
-                <div className="flex justify-end gap-2">
-                  <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Cancelar</Button>
-                  <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Subiendo...
-                      </>
-                    ) : (
-                      <>
-                        <Upload className="h-4 w-4 mr-2" />
-                        Enviar Pre-estimación
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </form>
-            </DialogContent>
+                      <div className="flex justify-end gap-2">
+                        <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Cancelar</Button>
+                        <Button type="submit" disabled={isSubmitting}>
+                          {isSubmitting ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Subiendo...
+                            </>
+                          ) : (
+                            <>
+                              <Upload className="h-4 w-4 mr-2" />
+                              Enviar Pre-estimación
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </form>
+                  </>
+                )}
+              </DialogContent>
           </Dialog>
         )
       }
