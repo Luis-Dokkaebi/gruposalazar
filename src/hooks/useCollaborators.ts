@@ -136,27 +136,34 @@ export function useCollaborators() {
     return Array.from(groupedMap.values());
   };
 
-  const refresh = async () => {
-    setLoading(true);
-    await fetchProjects();
-    const systemUsers = await fetchSystemCollaborators();
-    // Combine system users with manual collaborators
-    setCollaborators([...manualCollaborators, ...systemUsers]);
-    setLoading(false);
-  };
+  // Optimization: We will separate system users state to avoid refetching.
+  const [systemUsers, setSystemUsers] = useState<SystemCollaborator[]>([]);
 
+  // 1. Fetch system users only on mount (and manual refresh)
   useEffect(() => {
-    refresh();
-  }, []); // Initial load
-
-  // Re-merge when manual list changes
-  useEffect(() => {
-    const mergeData = async () => {
-       const systemUsers = await fetchSystemCollaborators();
-       setCollaborators([...manualCollaborators, ...systemUsers]);
+    const init = async () => {
+        setLoading(true);
+        await fetchProjects();
+        const sys = await fetchSystemCollaborators();
+        setSystemUsers(sys);
+        setLoading(false);
     };
-    mergeData();
-  }, [manualCollaborators]);
+    init();
+  }, []);
+
+  // 2. Merge whenever systemUsers OR manualCollaborators change
+  useEffect(() => {
+    setCollaborators([...manualCollaborators, ...systemUsers]);
+  }, [manualCollaborators, systemUsers]);
+
+  // We need to keep 'refresh' available for external callers (like after delete)
+  const refresh = async () => {
+      setLoading(true);
+      await fetchProjects();
+      const sys = await fetchSystemCollaborators();
+      setSystemUsers(sys);
+      setLoading(false);
+  };
 
   const sendInvitationEmail = async (
     email: string, 
