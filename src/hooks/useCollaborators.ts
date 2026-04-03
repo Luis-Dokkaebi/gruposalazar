@@ -35,6 +35,10 @@ export function useCollaborators() {
         throw new Error("Usuario no autenticado.");
       }
 
+      // Global Admin bypass using secure RPC
+      const { data: isAdmin } = await supabase.rpc('is_global_admin');
+      if (isAdmin) return true;
+
       // Check if user has 'soporte_tecnico' role in any project
       const { data, error } = await supabase
         .from('project_members')

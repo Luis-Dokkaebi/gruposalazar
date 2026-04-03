@@ -8,16 +8,13 @@ import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { ProjectInfo, AppRole, ManualCollaborator } from '@/types/collaborator';
+import { ProjectInfo, AppRole, ManualCollaborator, APP_ROLES } from '@/types/collaborator';
 import { X } from 'lucide-react';
 
 const formSchema = z.object({
   fullName: z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
   email: z.string().email("Correo electrónico inválido"),
-  role: z.enum([
-    "contratista", "residente", "superintendente", "lider_proyecto",
-    "compras", "finanzas", "pagos", "soporte_tecnico"
-  ] as [string, ...string[]], {
+  role: z.enum(APP_ROLES as [string, ...string[]], {
     required_error: "Selecciona un rol",
   }),
   projects: z.array(z.string()).min(1, "Selecciona al menos un proyecto"),
